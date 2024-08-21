@@ -9,12 +9,9 @@ generator client {
   previewFeatures = ["postgresqlExtensions"]
 }
 
-
-
-
 model users {
   user_id             Int              @id @default(autoincrement())
-  username            String           @unique @db.VarChar(50)
+  username            String            @unique @db.VarChar(50)
   email               String           @unique @db.VarChar(100)
   bio                 String?          @db.Text
   encrypted_password  String           @db.VarChar(255)
@@ -27,7 +24,6 @@ model users {
   role                role             @default(USER)
   account_status      accountStatus    @default(ACTIVE)
   sign_up_ip          String?          @db.VarChar(45)
-  login_count         Int              @default(0) // 로그인 횟수 필드 추가
   created_at          DateTime         @default(now()) @db.Timestamp
   last_login_at       DateTime?
   updated_at          DateTime?        @db.Timestamp
@@ -42,49 +38,7 @@ model users {
   auth_code           authCode[]
   following           follow[] @relation("FollowingRelation")
   followers           follow[] @relation("FollowerRelation")
-  reportReported      report[] @relation("ReportedUser")
-  reportReporter      report[] @relation("Reporter")
-  reportResolved      report[] @relation("ResolvedBy")
-  userBlockBlocker    userBlock[] @relation("Blocker")
-  userBlockBlocked    userBlock[] @relation("Blocked")
-  adminBlockAdmin     adminBlock[] @relation("Admin")
-  adminBlockBlocked   adminBlock[] @relation("AdminBlockedUser")
 }
-
-
-model levelthreshold {
-  level                Int     @id
-  min_posts            Int
-  min_comments         Int
-  min_likes            Int
-  min_logins           Int     @default(0) // 방문 횟수 기준 필드 추가
-  created_at           DateTime @default(now()) @db.Timestamp
-  updated_at           DateTime? @db.Timestamp
-  deleted_at           DateTime? @db.Timestamp
-}
-
-
-model AdBanner {
-  id                 Int      @id @default(autoincrement())
-  position           String
-  company_name       String
-  contract_period    Int
-  contract_date      DateTime
-  start_date         DateTime
-  end_date           DateTime
-  image_url          String
-  status             AdBannerStatus @default(INACTIVE) // 상태 필드
-  created_at           DateTime @default(now()) @db.Timestamp
-  updated_at           DateTime? @db.Timestamp
-  deleted_at           DateTime? @db.Timestamp
-}
-
-enum AdBannerStatus {
-  ACTIVE
-  INACTIVE
-}
-
-
 
 model socialLogin {
   social_login_id  Int        @id @default(autoincrement())
@@ -308,64 +262,6 @@ model adminAction {
   action_timestamp DateTime @default(now()) @db.Timestamp
   adminUser       users     @relation(fields: [admin_user_id], references: [user_id])
 }
-
-enum reportTargetType {
-  POST
-  COMMENT
-  USER
-}
-
-model report {
-  report_id         Int               @id @default(autoincrement())
-  target_type       reportTargetType  // 신고 대상의 유형 (POST, COMMENT, USER)
-  target_id         Int               // 신고 대상의 ID (게시글, 댓글, 사용자)
-  reported_user_id  Int
-  reported_user     users             @relation("ReportedUser", fields: [reported_user_id], references: [user_id])
-  reporter_user_id  Int
-  reporter_user     users             @relation("Reporter", fields: [reporter_user_id], references: [user_id])
-  reason            String            @db.Text
-  status            reportStatus      @default(PENDING)
-  created_at        DateTime          @default(now()) @db.Timestamp
-  updated_at        DateTime?         @db.Timestamp
-  resolved_at       DateTime?         @db.Timestamp
-  resolved_by_user_id Int?
-  resolved_by       users?            @relation("ResolvedBy", fields: [resolved_by_user_id], references: [user_id])
-}
-
-
-
-model userBlock {
-  block_id   Int       @id @default(autoincrement())
-  blocker    users     @relation("Blocker", fields: [blocker_id], references: [user_id])
-  blocker_id Int
-  blocked    users     @relation("Blocked", fields: [blocked_id], references: [user_id])
-  blocked_id Int
-  created_at DateTime  @default(now()) @db.Timestamp
-  deleted_at DateTime? @db.Timestamp  // Add this field for toggling block status
-}
-
-
-
-model adminBlock {
-  admin_block_id Int       @id @default(autoincrement())
-  admin          users     @relation("Admin", fields: [admin_id], references: [user_id])
-  admin_id       Int
-  blocked_user   users     @relation("AdminBlockedUser", fields: [blocked_user_id], references: [user_id])
-  blocked_user_id Int
-  reason         String    @db.Text
-  created_at     DateTime  @default(now()) @db.Timestamp
-  unblocked_at   DateTime?
-  block_count    Int       @default(1)
-  updated_at     DateTime  @updatedAt @db.Timestamp // Add this line for tracking updates
-}
-
-
-enum reportStatus {
-  PENDING
-  RESOLVED
-  REJECTED
-}
-
 
 enum role {
   USER

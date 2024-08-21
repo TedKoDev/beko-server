@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "AdBanner" ALTER COLUMN "status" SET DEFAULT 'INACTIVE';

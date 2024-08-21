@@ -65,10 +65,8 @@ export class AuthController {
   @Post('register')
   async register(@Body() dto: RegisterUserDto) {
     const { email, name, password } = dto;
-    await this.authService.registerUser(email, password, name);
-    const message =
-      'User registered. Please check your email for verification link.';
-    return { message };
+    const result = await this.authService.registerUser(email, password, name);
+    return result; // 이 부분이 중요합니다. AuthService에서 반환된 값 전체를 반환해야 합니다.
   }
 
   @Post('login')
