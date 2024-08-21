@@ -25,7 +25,8 @@
     "port": 465,
     "user": "gcc.offical.mail@gmail.com",
     "pass": "bbnb xewz esay ybha",
-    "from": "yongp8888@gmail.com"
+    "from": "yongp8888@gmail.com",
+    "receiverEmail": "gcc@gccgroup.co.kr"
   },
   "cafe24": {
     "clientId": "63TxKJEKaceELEdPdQju",

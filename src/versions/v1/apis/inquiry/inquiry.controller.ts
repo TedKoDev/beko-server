@@ -35,7 +35,7 @@ export class InquiryController {
             : '커작어린이본부';
 
       await this.emailService.sendEmail({
-        receiverEmail: config.get('email.receiverEmail'),
+        receiverEmail: config.get('mail.receiverEmail'),
         subject: `${serviceName} - ${createGeneralInquiryDto.inquiryType} 문의`,
         content: `
           이메일: ${createGeneralInquiryDto.email}\n

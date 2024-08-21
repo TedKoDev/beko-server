@@ -1,8 +1,6 @@
 import { MailerModule } from '@nestjs-modules/mailer';
-import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter';
 import { Module } from '@nestjs/common';
 import * as config from 'config';
-import { join } from 'path';
 
 import { EmailProvider } from './email.provider';
 
@@ -21,13 +19,6 @@ import { EmailProvider } from './email.provider';
         },
         defaults: {
           from: `"No Reply" <${config.get<string>('mail.from')}>`,
-        },
-        template: {
-          dir: join(__dirname, '../../../..', 'views'),
-          adapter: new EjsAdapter(),
-          options: {
-            strict: true,
-          },
         },
       }),
     }),
