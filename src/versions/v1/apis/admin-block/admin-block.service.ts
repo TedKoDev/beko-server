@@ -10,7 +10,6 @@ export class AdminBlockService {
   constructor(private readonly prisma: PrismaService) {}
 
   // 관리자 유저 차단
-  // 관리자 유저 차단
   async blockUser(createAdminBlockDto: CreateAdminBlockDto, adminId: number) {
     const { blockedUserId, reason } = createAdminBlockDto;
 
@@ -37,17 +36,25 @@ export class AdminBlockService {
     });
 
     if (previousBlock) {
-      return this.prisma.adminBlock.update({
+      await this.prisma.adminBlock.update({
         where: { admin_block_id: previousBlock.admin_block_id },
         data: {
           unblocked_at: null, // Reset unblocked_at
           block_count: { increment: 1 }, // Increment block count
         },
       });
+
+      // Update account status to INACTIVE
+      await this.prisma.users.update({
+        where: { user_id: blockedUserId },
+        data: { account_status: 'INACTIVE' },
+      });
+
+      return;
     }
 
     // Create a new block record if no previous block found
-    return this.prisma.adminBlock.create({
+    await this.prisma.adminBlock.create({
       data: {
         admin: {
           connect: {
@@ -64,9 +71,14 @@ export class AdminBlockService {
         block_count: 1, // Set initial block count
       },
     });
+
+    // Update account status to INACTIVE
+    await this.prisma.users.update({
+      where: { user_id: blockedUserId },
+      data: { account_status: 'INACTIVE' },
+    });
   }
 
-  // 관리자 유저 차단 해제
   // 관리자 유저 차단 해제
   async unblockUser(unblockUserDto: UnblockAdminDto, adminId: number) {
     const { blockedUserId } = unblockUserDto;
@@ -95,8 +107,15 @@ export class AdminBlockService {
       },
     });
 
+    // Update account status to ACTIVE
+    await this.prisma.users.update({
+      where: { user_id: blockedUserId },
+      data: { account_status: 'ACTIVE' },
+    });
+
     return { message: 'User has been successfully unblocked' };
   }
+
   // 관리자에 의한 차단된 유저 리스트 조회
   async getBlockedUsers(adminId: number, paginationQuery: GetBlockedUsersDto) {
     const { page, limit, search } = paginationQuery;

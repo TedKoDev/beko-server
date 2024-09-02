@@ -246,7 +246,7 @@ export class AuthService {
     });
 
     const payload = { userId: codeInfo.user_id, role: user.role };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '12h' });
     return { access_token: accessToken };
   }
 

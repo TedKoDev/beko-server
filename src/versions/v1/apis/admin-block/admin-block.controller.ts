@@ -21,6 +21,8 @@ export class AdminBlockController {
     @Req() req: { user: { userId: number } },
   ) {
     const adminId = req.user.userId; // Extract userId from req.user
+    console.log('adminId', adminId);
+    console.log('createAdminBlockDto', createAdminBlockDto);
     return this.adminBlockService.blockUser(createAdminBlockDto, adminId);
   }
   // 관리자 유저 차단 해제
