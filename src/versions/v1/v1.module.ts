@@ -9,6 +9,7 @@ import { LikesModule } from './apis/likes';
 import { PointsModule } from './apis/point';
 import { PostsModule } from './apis/posts';
 import { SearchModule } from './apis/search';
+import { SlackModule } from './apis/slack/slack.module';
 import { UserModule } from './apis/user';
 import { UserBlockModule } from './apis/userblock';
 
@@ -25,6 +26,7 @@ import { UserBlockModule } from './apis/userblock';
     PointsModule,
     LikesModule,
     SearchModule,
+    SlackModule, // Import the Slack module
   ],
 })
 export class V1Module {}

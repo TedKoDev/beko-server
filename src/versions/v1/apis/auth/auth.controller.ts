@@ -12,6 +12,7 @@ import * as config from 'config';
 import { Response } from 'express';
 
 import { JwtService } from '@nestjs/jwt';
+import { SlackService } from '../slack/slack.service';
 import { AUTH_SERVICE_TOKEN, AuthService } from './auth.service';
 import {
   AuthorizeDto,
@@ -34,6 +35,7 @@ export class AuthController {
     @Inject(AUTH_SERVICE_TOKEN)
     private readonly authService: AuthService,
     private readonly jwtService: JwtService,
+    private readonly slackService: SlackService, // Inject SlackService
   ) {}
 
   /** GET */
@@ -66,8 +68,21 @@ export class AuthController {
   async register(@Body() dto: RegisterUserDto) {
     const { email, name, password } = dto;
     const result = await this.authService.registerUser(email, password, name);
-    return result; // 이 부분이 중요합니다. AuthService에서 반환된 값 전체를 반환해야 합니다.
+
+    // Send a notification to Slack upon successful registration
+    await this.slackService.sendMessage(
+      '#알림봇테스트',
+      `New user registered: ${name} (${email})`,
+    );
+
+    return result; // Ensure the result from the AuthService is returned
   }
+  // @Post('register')
+  // async register(@Body() dto: RegisterUserDto) {
+  //   const { email, name, password } = dto;
+  //   const result = await this.authService.registerUser(email, password, name);
+  //   return result; // 이 부분이 중요합니다. AuthService에서 반환된 값 전체를 반환해야 합니다.
+  // }
 
   @Post('login')
   async login(@Body() dto: LoginUserDto, @Res() res: Response) {
