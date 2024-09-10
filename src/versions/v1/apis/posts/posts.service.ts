@@ -411,6 +411,7 @@ export class PostsService {
         take: limit,
         orderBy,
         include: {
+          user: true,
           post_general: true,
           post_column: true,
           post_question: true,
@@ -457,6 +458,7 @@ export class PostsService {
       return {
         post_id: post.post_id,
         user_id: post.user_id,
+        username: post.user.username, // Include the user's name
         category_id: post.category_id,
         type: post.type,
         status: post.status,
@@ -488,6 +490,7 @@ export class PostsService {
         deleted_at: null,
       },
       include: {
+        user: true,
         post_general: true,
         post_column: true,
         post_question: true,
@@ -532,6 +535,7 @@ export class PostsService {
     const integratedPost = {
       post_id: post.post_id,
       user_id: post.user_id,
+      username: post.user.username, // Include the user's name
       category_id: post.category_id,
       type: post.type,
       status: post.status,

@@ -11,8 +11,8 @@ import {
 
 export class CreateAdBannerDto {
   @IsNotEmpty()
-  @IsString()
-  position: string; // 'TOP' | 'BOTTOM' | 'LEFT' | 'RIGHT'
+  @IsNumber()
+  position: number;
 
   @IsNotEmpty()
   @IsString()

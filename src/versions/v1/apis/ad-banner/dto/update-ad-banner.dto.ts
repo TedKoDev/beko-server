@@ -10,8 +10,8 @@ import {
 
 export class UpdateAdBannerDto {
   @IsOptional()
-  @IsString()
-  position?: string;
+  @IsNumber()
+  position?: number;
 
   @IsOptional()
   @IsString()
