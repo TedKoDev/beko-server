@@ -19,6 +19,10 @@ export class CreateAdBannerDto {
   company_name: string;
 
   @IsNotEmpty()
+  @IsString()
+  description: string;
+
+  @IsNotEmpty()
   @IsNumber()
   contract_period: number;
 

@@ -2,10 +2,15 @@ import { PrismaService } from '@/prisma/postsql-prisma.service';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { SearchQueryDto } from './dto/search-query.dto';
+import { PopularSearchService } from './popular-search.service';
 
 @Injectable()
 export class SearchService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+
+    private popularSearchService: PopularSearchService, // 추가
+  ) {}
 
   async search(queryDto: SearchQueryDto) {
     const { query, limit } = queryDto;
@@ -13,6 +18,8 @@ export class SearchService {
     if (!query) {
       return { postsByContent: [], postsByTag: [], users: [] };
     }
+    // 인기 검색어 업데이트 로직 추가
+    await this.popularSearchService.recordSearch(query); // 검색어 기록
 
     // 게시글(제목, 내용, 카테고리)
     const postContentWhere: Prisma.postWhereInput = {

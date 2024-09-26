@@ -68,11 +68,13 @@ model AdBanner {
   id                 Int      @id @default(autoincrement())
   position           Int
   company_name       String
+  description        String
   contract_period    Int
   contract_date      DateTime
   start_date         DateTime
   end_date           DateTime
   image_url          String
+  view_count         Int      @default(0)
   status             AdBannerStatus @default(INACTIVE) // 상태 필드
   created_at           DateTime @default(now()) @db.Timestamp
   updated_at           DateTime? @db.Timestamp
@@ -357,6 +359,27 @@ model adminBlock {
   unblocked_at   DateTime?
   block_count    Int       @default(1)
   updated_at     DateTime  @updatedAt @db.Timestamp // Add this line for tracking updates
+}
+
+
+model PopularSearchRank {
+  id            Int       @id @default(autoincrement())
+  keyword       String    @db.VarChar(255) // 검색어
+  current_rank  Int       // 현재 순위
+  previous_rank Int?      // 이전 순위, 없으면 New 상태
+  rank_change   RankChange // 순위 변화 상태 (up, down, new)
+  rank_difference Int?     // 순위가 몇 위 변동했는지
+  search_count  Int       @default(0) // 해당 검색어가 검색된 횟수
+  check_time    DateTime  @default(now()) // 순위 체크한 시간
+  created_at    DateTime  @default(now()) @db.Timestamp
+  updated_at    DateTime? @db.Timestamp
+}
+
+enum RankChange {
+  UP
+  DOWN
+  NEW
+  SAME
 }
 
 

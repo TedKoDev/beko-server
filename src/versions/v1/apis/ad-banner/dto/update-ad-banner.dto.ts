@@ -18,6 +18,10 @@ export class UpdateAdBannerDto {
   company_name?: string;
 
   @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
   @IsNumber()
   contract_period?: number;
 
