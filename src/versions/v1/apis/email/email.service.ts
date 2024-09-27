@@ -15,7 +15,10 @@ export class EmailService {
     return this.mailerService.sendMail({
       to: email,
       subject: 'Welcome to Our App! Confirm your Email',
-      template: 'confirmation',
+      template: 'confirmation', // 이메일 템플릿 (HTML 파일)
+      context: {
+        url, // 템플릿에서 사용할 URL
+      },
     });
   }
 

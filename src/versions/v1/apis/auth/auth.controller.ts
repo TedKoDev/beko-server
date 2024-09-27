@@ -6,13 +6,12 @@ import {
   Post,
   Query,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import * as config from 'config';
 import { Response } from 'express';
 
 import { JwtService } from '@nestjs/jwt';
-import { SlackService } from '../slack/slack.service';
+import { SlackService } from '../utils/slack/slack.service';
 import { AUTH_SERVICE_TOKEN, AuthService } from './auth.service';
 import {
   AuthorizeDto,
@@ -24,7 +23,6 @@ import {
   LoginUserDto,
   RegisterUserDto,
 } from './dto';
-import { ApiKeyGuard } from './guards';
 
 @Controller({
   path: 'auth',
@@ -113,7 +111,6 @@ export class AuthController {
   }
 
   @Post('keojak-dev-login')
-  @UseGuards(ApiKeyGuard)
   async keojakDevLogin(@Body() dto: DevLoginDto) {
     const { email, password } = dto;
     const { keojakCode } = await this.authService.loginUser(email, password);
@@ -123,7 +120,6 @@ export class AuthController {
   }
 
   @Post('keojak-token')
-  @UseGuards(ApiKeyGuard)
   async getKeojakToken(@Body() { keojakCode }: KeojakGetTokenDto) {
     return this.authService.getKeojakToken(keojakCode);
   }

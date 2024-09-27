@@ -1,8 +1,9 @@
 import { MailerModule } from '@nestjs-modules/mailer';
+import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter'; // EJS 어댑터 추가
 import { Module } from '@nestjs/common';
 import * as config from 'config';
-
-import { EmailProvider } from './email.provider';
+import { join } from 'path'; // 경로 설정을 위해 join을 사용
+import { EmailService } from './email.service';
 
 @Module({
   imports: [
@@ -20,10 +21,17 @@ import { EmailProvider } from './email.provider';
         defaults: {
           from: `"No Reply" <${config.get<string>('mail.from')}>`,
         },
+        template: {
+          dir: join(__dirname, '../views'), // 템플릿 파일이 있는 디렉토리 설정
+          adapter: new EjsAdapter(), // EJS 어댑터 설정
+          options: {
+            strict: false, // EJS 옵션 설정
+          },
+        },
       }),
     }),
   ],
-  providers: [EmailProvider],
-  exports: [EmailProvider],
+  providers: [EmailService],
+  exports: [EmailService],
 })
 export class EmailModule {}
