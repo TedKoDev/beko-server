@@ -22,7 +22,7 @@ import { EmailService } from './email.service';
           from: `"No Reply" <${config.get<string>('mail.from')}>`,
         },
         template: {
-          dir: join(__dirname, '../views'), // 템플릿 파일이 있는 디렉토리 설정
+          dir: join(__dirname, '../../../../views/'), // 템플릿 파일이 있는 디렉토리 설정
           adapter: new EjsAdapter(), // EJS 어댑터 설정
           options: {
             strict: false, // EJS 옵션 설정

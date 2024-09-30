@@ -41,7 +41,7 @@ export class AuthController {
   async confirmEmail(@Query() dto: ConfirmEmailDto, @Res() res: Response) {
     const { token } = dto;
     await this.authService.confirmEmail(token);
-    return res.send('Email confirmed');
+    return res.send('이메일 인증이 완료되었습니다. 로그인해주세요.');
   }
 
   @Get('authorize')
@@ -75,12 +75,6 @@ export class AuthController {
 
     return result; // Ensure the result from the AuthService is returned
   }
-  // @Post('register')
-  // async register(@Body() dto: RegisterUserDto) {
-  //   const { email, name, password } = dto;
-  //   const result = await this.authService.registerUser(email, password, name);
-  //   return result; // 이 부분이 중요합니다. AuthService에서 반환된 값 전체를 반환해야 합니다.
-  // }
 
   @Post('login')
   async login(@Body() dto: LoginUserDto, @Res() res: Response) {
