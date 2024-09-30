@@ -5,12 +5,15 @@ import {
   Inject,
   Post,
   Query,
+  Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import * as config from 'config';
 import { Response } from 'express';
 
 import { JwtService } from '@nestjs/jwt';
+import { AuthGuard } from '@nestjs/passport';
 import { SlackService } from '../utils/slack/slack.service';
 import { AUTH_SERVICE_TOKEN, AuthService } from './auth.service';
 import {
@@ -35,6 +38,23 @@ export class AuthController {
     private readonly jwtService: JwtService,
     private readonly slackService: SlackService, // Inject SlackService
   ) {}
+
+  // Google 로그인 시작 경로
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth(@Req() req) {
+    console.log(req);
+    // Passport가 Google로 리디렉션합니다.
+  }
+
+  // Google 로그인 콜백 경로
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req, @Res() res: Response) {
+    const { user, token } = await this.authService.googleLogin(req); // 로그인 처리
+    res.redirect(`/profile?token=${token}`); // JWT 토큰을 포함한 리디렉션
+    console.log(user);
+  }
 
   /** GET */
   @Get('confirm')

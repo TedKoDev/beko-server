@@ -18,6 +18,67 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService, // EmailService 주입
   ) {}
+  // 구글 로그인
+  // Google OAuth 로그인 처리 로직
+  async googleLogin(req: any) {
+    if (!req.user) {
+      throw new Error('No user information received from Google');
+    }
+
+    const {
+      email,
+      firstName,
+      lastName,
+      picture,
+      sub: providerUserId,
+    } = req.user;
+
+    // 기존 사용자인지 확인
+    let user = await this.prisma.users.findUnique({
+      where: { email },
+    });
+
+    // 사용자가 없으면 새로 생성
+    if (!user) {
+      user = await this.prisma.users.create({
+        data: {
+          email,
+          username: `${firstName} ${lastName}`,
+          profile_picture_url: picture,
+          encrypted_password: 'social-login-placeholder', // 소셜 로그인은 비밀번호가 없으므로 임시값 사용
+          is_email_verified: true, // 소셜 로그인은 이메일 인증을 생략
+          role: ROLE.USER,
+          account_status: accountStatus.ACTIVE,
+        },
+      });
+    }
+
+    // 소셜 로그인 정보가 있는지 확인
+    const socialLogin = await this.prisma.socialLogin.findFirst({
+      where: {
+        user_id: user.user_id,
+        provider: 'GOOGLE',
+        provider_user_id: providerUserId,
+      },
+    });
+
+    // 소셜 로그인 정보가 없으면 새로 생성
+    if (!socialLogin) {
+      await this.prisma.socialLogin.create({
+        data: {
+          user_id: user.user_id,
+          provider: 'GOOGLE',
+          provider_user_id: providerUserId,
+        },
+      });
+    }
+
+    // JWT 토큰 생성
+    const payload = { userId: user.user_id, role: user.role };
+    const token = this.jwtService.sign(payload);
+
+    return { user, token };
+  }
 
   // 회원가입
   async registerUser(email: string, password: string, name: string) {

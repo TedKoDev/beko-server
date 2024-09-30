@@ -37,3 +37,7 @@ npx prisma migrate dev --name like_isliked_deleted --schema=prisma/postsql.prism
 ### s3 prisigned 서비스
 
 pnpm install @aws-sdk/s3-request-presigner
+
+### google 로그인
+
+pnpm add @nestjs/passport passport passport-google-oauth20

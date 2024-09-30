@@ -403,10 +403,8 @@ enum accountStatus {
 
 enum provider {
   GOOGLE
-  FACEBOOK
-  TWITTER
-  LINKEDIN
-  GITHUB
+  NAVER
+  KAKAO
 }
 
 enum postType {
