@@ -6,7 +6,7 @@ import { EmailModule, EmailService } from '../email';
 import { SlackModule } from '../utils/slack/slack.module';
 import { AuthController } from './auth.controller';
 import { AuthProvider } from './auth.provider';
-import { GoogleStrategy, JwtStrategy } from './strategy';
+import { JwtStrategy } from './strategy';
 
 @Module({
   imports: [
@@ -14,13 +14,7 @@ import { GoogleStrategy, JwtStrategy } from './strategy';
     EmailModule,
     SlackModule,
   ], // SlackModule 추가
-  providers: [
-    AuthProvider,
-    JwtStrategy,
-    PrismaService,
-    EmailService,
-    GoogleStrategy,
-  ],
+  providers: [AuthProvider, JwtStrategy, PrismaService, EmailService],
   controllers: [AuthController],
   exports: [AuthProvider, EmailService],
 })
