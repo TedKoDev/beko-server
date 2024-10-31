@@ -6,7 +6,6 @@ import { AuthModule } from './apis/auth';
 import { CommentsModule } from './apis/comments';
 import { EmailModule } from './apis/email';
 import { FollowModule } from './apis/follow';
-import { InquiryModule } from './apis/inquiry';
 import { LikesModule } from './apis/likes';
 import { PointsModule } from './apis/point';
 import { PostsModule } from './apis/posts';
@@ -16,10 +15,10 @@ import { UserModule } from './apis/user';
 import { UserBlockModule } from './apis/userblock';
 import { S3Module } from './apis/utils/s3service/s3.module';
 import { SlackModule } from './apis/utils/slack/slack.module';
+import { WordModule } from './apis/word';
 
 @Module({
   imports: [
-    InquiryModule,
     AuthModule,
     UserModule,
     UserBlockModule,
@@ -28,10 +27,12 @@ import { SlackModule } from './apis/utils/slack/slack.module';
     PostsModule,
     CommentsModule,
     ReportModule,
+    WordModule,
     FollowModule,
     PointsModule,
     LikesModule,
     EmailModule,
+    WordModule,
     SearchModule,
     SlackModule, // Import the Slack module
     S3Module, // Import the S3 module

@@ -17,7 +17,7 @@
   },
   "database": {
     "postsql": {
-      "url": "postgresql://admin:1234@localhost:5432/keojak-community?schema=public"
+      "url": "postgresql://admin:1234@localhost:5432/bekodb?schema=public"
     }
   },
   "mail": {

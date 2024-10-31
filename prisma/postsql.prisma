@@ -152,6 +152,38 @@ model category {
   post           post[]
 }
 
+model wordlist {
+  word_id        Int       @id @default(autoincrement())
+  word           String    @db.VarChar(255)  @unique
+  part_of_speech String    @db.VarChar(50)  // 동사, 명사, 형용사 등
+  usage_count    Int       @default(0)      // 단어가 사용된 횟수
+  created_at     DateTime  @default(now()) @db.Timestamp
+  updated_at     DateTime? @db.Timestamp
+  deleted_at     DateTime? @db.Timestamp
+}
+
+
+model picturewordquestion {
+  question_id  Int       @id @default(autoincrement())
+  image_url    String    @db.VarChar(255)  // 이미지 파일 경로나 URL
+  level        Int       // 난이도 레벨
+  answer       String    @db.VarChar(100)  // 정답 단어
+  option1      String    @db.VarChar(100)  // 보기 1
+  option2      String    @db.VarChar(100)  // 보기 2
+  created_at   DateTime  @default(now()) @db.Timestamp
+  updated_at   DateTime? @db.Timestamp
+}
+
+model youtubelink {
+  link_id     Int       @id @default(autoincrement())
+  link        String    @db.VarChar(255)  // 유튜브 링크
+  created_at  DateTime  @default(now()) @db.Timestamp
+  updated_at  DateTime? @db.Timestamp
+  deleted_at  DateTime? @db.Timestamp
+}
+
+
+
 model media {
   media_id    Int       @id @default(autoincrement())
   post_id     Int?
@@ -219,6 +251,7 @@ model post {
   post_general post_general?
   post_column  post_column?
   post_question post_question?
+  post_sentence post_sentence?
 }
 
 model post_general {
@@ -231,6 +264,18 @@ model post_general {
   deleted_at    DateTime? @db.Timestamp
   post          post      @relation(fields: [post_id], references: [post_id])
 }
+
+model post_sentence {
+  sentence_id   Int       @id @default(autoincrement())
+  post_id       Int       @unique
+  title         String    @db.VarChar(255)
+  content       String    @db.Text
+  created_at    DateTime  @default(now()) @db.Timestamp
+  updated_at    DateTime? @db.Timestamp
+  deleted_at    DateTime? @db.Timestamp
+  post          post      @relation(fields: [post_id], references: [post_id])
+}
+
 
 model post_column {
   column_id     Int       @id @default(autoincrement())
@@ -411,6 +456,7 @@ enum postType {
   GENERAL
   COLUMN
   QUESTION
+  SENTENCE
 }
 
 enum sortType {

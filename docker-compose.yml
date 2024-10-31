@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: 1234
-      POSTGRES_DB: keojak-community
+      POSTGRES_DB: bekodb
     ports:
       - '5432:5432'
     volumes:
@@ -13,4 +13,4 @@ services:
 
 volumes:
   postgres_data:
-    external: true
+    # external: true
