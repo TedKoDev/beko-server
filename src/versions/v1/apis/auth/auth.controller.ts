@@ -20,7 +20,6 @@ import {
   GetTokenDto,
   GetUserInfoBodyDto,
   KeojakGetTokenDto,
-  LoginUserDto,
   RegisterUserDto,
 } from './dto';
 
@@ -76,18 +75,6 @@ export class AuthController {
     return result; // Ensure the result from the AuthService is returned
   }
 
-  @Post('login')
-  async login(@Body() dto: LoginUserDto, @Res() res: Response) {
-    const { email, password, redirect_uri, state } = dto;
-    const result = await this.authService.loginUser(email, password);
-    if (!result) {
-      return res.status(401).send('Invalid credentials');
-    }
-
-    const redirectUrl = `${redirect_uri}?code=${result.authCode}&state=${state}&keojak_code=${result.keojakCode}`;
-    res.redirect(redirectUrl);
-  }
-
   @Post('token')
   async getToken(@Body() dto: GetTokenDto) {
     const { code, client_id, client_secret, grant_type } = dto;
@@ -104,13 +91,16 @@ export class AuthController {
     return this.authService.getToken(code);
   }
 
-  @Post('keojak-dev-login')
-  async keojakDevLogin(@Body() dto: DevLoginDto) {
+  @Post('login')
+  async Login(@Body() dto: DevLoginDto) {
     const { email, password } = dto;
-    const { keojakCode } = await this.authService.loginUser(email, password);
+    const { keojakCode, user } = await this.authService.loginUser(
+      email,
+      password,
+    );
     const { access_token } = await this.authService.getKeojakToken(keojakCode);
 
-    return { access_token };
+    return { keojakCode, access_token, user };
   }
 
   @Post('keojak-token')
@@ -123,5 +113,15 @@ export class AuthController {
     const { access_token } = dto;
     const payload = this.jwtService.verify(access_token);
     return this.authService.getUserInfoBody(payload.userId);
+  }
+
+  @Post('check-email')
+  async checkEmail(@Body('email') email: string) {
+    return this.authService.checkEmail(email);
+  }
+
+  @Post('check-name')
+  async checkName(@Body('name') name: string) {
+    return this.authService.checkName(name);
   }
 }

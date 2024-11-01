@@ -1,6 +1,6 @@
 import { PrismaService } from '@/prisma';
 import { ROLE } from '@/types/v1'; // accountStatus import
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { accountStatus } from '@prisma/client';
 import * as config from 'config';
@@ -22,78 +22,109 @@ export class AuthService {
 
   // 회원가입
   async registerUser(email: string, password: string, name: string) {
-    const existingEmailUser = await this.prisma.users.findUnique({
-      where: { email },
-    });
+    try {
+      const existingEmailUser = await this.prisma.users.findUnique({
+        where: { email },
+      });
 
-    if (existingEmailUser) {
-      throw new Error('Email is already in use');
-    }
+      if (existingEmailUser) {
+        throw new HttpException(
+          '이미 사용 중인 이메일입니다',
+          HttpStatus.CONFLICT,
+        );
+      }
 
-    const emailVerificationToken = uuidv4();
-    const encryptedPassword = this._encryptPassword(password);
+      const emailVerificationToken = uuidv4();
+      const encryptedPassword = this._encryptPassword(password);
 
-    let finalUsername = name;
-    const existingUsernameUser = await this.prisma.users.findUnique({
-      where: { username: name },
-    });
+      let finalUsername = name;
+      const existingUsernameUser = await this.prisma.users.findUnique({
+        where: { username: name },
+      });
 
-    if (existingUsernameUser) {
-      const uniqueSuffix = `#${uuidv4().slice(0, 8)}`;
-      finalUsername = `${name}${uniqueSuffix}`;
-    }
+      if (existingUsernameUser) {
+        const uniqueSuffix = `#${uuidv4().slice(0, 8)}`;
+        finalUsername = `${name}${uniqueSuffix}`;
+      }
 
-    const user = await this.prisma.users.create({
-      data: {
-        email,
-        encrypted_password: encryptedPassword,
+      const user = await this.prisma.users.create({
+        data: {
+          email,
+          encrypted_password: encryptedPassword,
+          username: finalUsername,
+          email_verification_token: emailVerificationToken,
+          is_email_verified: false,
+          role: ROLE.USER,
+          account_status: accountStatus.INACTIVE,
+        },
+      });
+
+      try {
+        await this.emailService.sendUserConfirmation(
+          email,
+          emailVerificationToken,
+        );
+      } catch (emailError) {
+        // 이메일 전송 실패 시 생성된 유저 삭제
+        await this.prisma.users.delete({ where: { user_id: user.user_id } });
+        throw new HttpException(
+          '이메일 전송에 실패했습니다',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+
+      await this.prisma.point.create({
+        data: {
+          user_id: user.user_id,
+          points_change: 2000,
+          change_reason: 'New user registration',
+        },
+      });
+
+      return {
+        message: '회원가입이 완료되었습니다. 이메일 인증 링크를 확인해주세요.',
         username: finalUsername,
-        email_verification_token: emailVerificationToken,
-        is_email_verified: false,
-        role: ROLE.USER,
-        account_status: accountStatus.INACTIVE, // 이메일 인증 전 INACTIVE
-      },
-    });
-
-    // 이메일 인증 링크 전송
-    await this.emailService.sendUserConfirmation(email, emailVerificationToken);
-
-    // 신규 유저 포인트 추가
-    await this.prisma.point.create({
-      data: {
-        user_id: user.user_id,
-        points_change: 2000,
-        change_reason: 'New user registration',
-      },
-    });
-
-    return {
-      message:
-        'User registered. Please check your email for verification link.',
-      username: finalUsername,
-    };
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      if (error.code === 'P2002') {
+        // Prisma unique constraint error
+        throw new HttpException(
+          '중복된 데이터가 존재합니다',
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw new HttpException(
+        '회원가입 처리 중 오류가 발생했습니다',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   // 로그인
   async loginUser(email: string, password: string) {
     const user = await this.prisma.users.findUnique({
       where: { email },
-      select: {
-        user_id: true,
-        encrypted_password: true,
-        is_email_verified: true,
-        level: true,
-        last_login_at: true,
-        login_count: true,
-      },
     });
 
-    if (!user || !this._comparePassword(password, user.encrypted_password)) {
-      throw new Error('Invalid credentials or email not verified');
+    if (!user) {
+      throw new HttpException(
+        '존재하지 않는 사용자입니다',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (!this._comparePassword(password, user.encrypted_password)) {
+      throw new HttpException(
+        '비밀번호가 일치하지 않습니다',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     if (!user.is_email_verified) {
-      throw new Error('Email not verified');
+      throw new HttpException('이메일 인증이 필요합니다', HttpStatus.FORBIDDEN);
     }
 
     const today = dayjs().startOf('day');
@@ -128,7 +159,8 @@ export class AuthService {
       },
     });
 
-    return { authCode: code, keojakCode: keojak_code };
+    console.log('user', user.user_id);
+    return { authCode: code, keojakCode: keojak_code, user };
   }
 
   // 이메일 인증
@@ -264,5 +296,55 @@ export class AuthService {
     const digest = config.get<string>('pbkdf2.digest');
     const pbkdf2 = pbkdf2Sync(password, salt, iterations, keylen, digest);
     return pbkdf2.toString('base64');
+  }
+
+  async checkEmail(email: string) {
+    try {
+      const existingUser = await this.prisma.users.findUnique({
+        where: { email },
+      });
+
+      if (existingUser) {
+        throw new HttpException(
+          '이미 사용 중인 이메일입니다',
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      return { available: true, message: '사용 가능한 이메일입니다' };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        '이메일 확인 중 오류가 발생했습니다',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async checkName(name: string) {
+    try {
+      const existingUser = await this.prisma.users.findUnique({
+        where: { username: name },
+      });
+
+      if (existingUser) {
+        throw new HttpException(
+          '이미 사용 중인 이름입니다',
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      return { available: true, message: '사용 가능한 이름입니다' };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        '이름 확인 중 오류가 발생했습니다',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
