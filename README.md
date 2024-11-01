@@ -41,3 +41,8 @@ pnpm install @aws-sdk/s3-request-presigner
 ### google 로그인
 
 pnpm add @nestjs/passport passport passport-google-oauth20
+
+### node-cron
+
+pnpm add node-cron
+pnpm add -D @types/node-cron

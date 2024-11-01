@@ -152,6 +152,7 @@ model category {
   post           post[]
 }
 
+
 model wordlist {
   word_id        Int       @id @default(autoincrement())
   word           String    @db.VarChar(255)  @unique
@@ -160,8 +161,17 @@ model wordlist {
   created_at     DateTime  @default(now()) @db.Timestamp
   updated_at     DateTime? @db.Timestamp
   deleted_at     DateTime? @db.Timestamp
+  selectedWords  selected_words[] // 반대 관계 필드 추가
 }
 
+model selected_words {
+  id            Int       @id @default(autoincrement())
+  word_id       Int
+  selected_date DateTime  @default(now()) @db.Date
+  word          wordlist  @relation(fields: [word_id], references: [word_id])
+
+  @@unique([word_id, selected_date]) // 같은 단어가 같은 날에 중복 저장되지 않도록 설정
+}
 
 model picturewordquestion {
   question_id  Int       @id @default(autoincrement())
