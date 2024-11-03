@@ -2,6 +2,46 @@
 -- category 테이블에 더미 데이터 삽입
 -- sql문 그냥 넣고 돌리면 됨
 
+-- topic 테이블에 더미 데이터 삽입
+INSERT INTO public."topic" (title, created_at, updated_at, deleted_at) VALUES
+('한국어 학습', NOW(), NULL, NULL),
+('한국 문화', NOW(), NULL, NULL),
+('커뮤니티', NOW(), NULL, NULL),
+('학습 자료', NOW(), NULL, NULL),
+('질문과 답변', NOW(), NULL, NULL);
+
+-- category 테이블에 더미 데이터 삽입
+INSERT INTO public."category" (topic_id, category_name, created_at, updated_at, deleted_at) VALUES
+((SELECT topic_id FROM public."topic" WHERE title = '한국어 학습'), '문법', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '한국어 학습'), '어휘', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '한국어 학습'), '발음', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '한국어 학습'), '쓰기', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '한국어 학습'), '말하기', NOW(), NULL, NULL),
+
+((SELECT topic_id FROM public."topic" WHERE title = '한국 문화'), 'K-POP', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '한국 문화'), '영화/드라마', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '한국 문화'), '음식', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '한국 문화'), '전통문화', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '한국 문화'), '생활문화', NOW(), NULL, NULL),
+
+((SELECT topic_id FROM public."topic" WHERE title = '커뮤니티'), '자유게시판', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '커뮤니티'), '친구찾기', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '커뮤니티'), '스터디모집', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '커뮤니티'), '한국생활정보', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '커뮤니티'), '경험공유', NOW(), NULL, NULL),
+
+((SELECT topic_id FROM public."topic" WHERE title = '학습 자료'), '교재추천', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '학습 자료'), '학습앱소개', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '학습 자료'), '온라인강의', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '학습 자료'), '시험정보', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '학습 자료'), '학습팁', NOW(), NULL, NULL),
+
+((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '문법질문', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '번역요청', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '발음교정', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '어휘질문', NOW(), NULL, NULL),
+((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '일상회화', NOW(), NULL, NULL);
+
 INSERT INTO public."topic" (title, created_at, updated_at, deleted_at) VALUES
 ('Brewing Methods', NOW(), NULL, NULL),
 ('Coffee Beans', NOW(), NULL, NULL),

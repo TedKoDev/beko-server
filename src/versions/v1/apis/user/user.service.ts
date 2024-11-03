@@ -13,12 +13,6 @@ export class UserService {
   async profile(userId: number) {
     return this.prisma.users.findUnique({
       where: { user_id: userId },
-      select: {
-        user_id: true,
-        email: true,
-        username: true,
-        // 필요에 따라 추가 필드 포함
-      },
     });
   }
 

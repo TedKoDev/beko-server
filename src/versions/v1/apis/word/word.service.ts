@@ -7,19 +7,34 @@ export class WordService implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
 
   async onModuleInit() {
-    await this.selectDailyWords();
-
-    cron.schedule('0 0 * * *', async () => {
+    // 서버 시작시 오늘의 단어가 없다면 선택
+    const todayWords = await this.getWords();
+    if (todayWords.length === 0) {
       await this.selectDailyWords();
-    });
+    }
+
+    // 매일 자정(한국 시간)에 실행
+    cron.schedule(
+      '0 0 * * *',
+      async () => {
+        await this.selectDailyWords();
+      },
+      {
+        scheduled: true,
+        timezone: 'Asia/Seoul',
+      },
+    );
   }
 
   private async selectDailyWords() {
     try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // 시간을 00:00:00으로 설정
+
       // 기존 선택된 단어들 삭제
       await this.prisma.selected_words.deleteMany({
         where: {
-          selected_date: new Date(),
+          selected_date: today,
         },
       });
 
@@ -37,7 +52,7 @@ export class WordService implements OnModuleInit {
         await this.prisma.selected_words.create({
           data: {
             word_id: word.word_id,
-            selected_date: new Date(),
+            selected_date: today,
           },
         });
 
@@ -57,9 +72,12 @@ export class WordService implements OnModuleInit {
 
   async getWords() {
     try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // 시간을 00:00:00으로 설정
+
       const todaysWords = await this.prisma.selected_words.findMany({
         where: {
-          selected_date: new Date(),
+          selected_date: today,
         },
         include: {
           word: true,

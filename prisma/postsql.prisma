@@ -9,7 +9,21 @@ generator client {
   previewFeatures = ["postgresqlExtensions"]
 }
 
+enum LogType {
+  TODAY_TASK_PARTICIPATION
+}
 
+model log {
+  log_id        Int       @id @default(autoincrement())
+  type          LogType   // 로그 종류
+  count         Int       @default(0)  // 발생 횟수
+  created_at    DateTime  @default(now()) @db.Timestamp
+  updated_at    DateTime? @db.Timestamp
+  deleted_at    DateTime? @db.Timestamp
+
+  @@index([type])
+  @@index([created_at])
+}
 
 
 model users {
@@ -25,6 +39,8 @@ model users {
   level               Int              @default(1)
   is_email_verified   Boolean          @default(false)
   role                role             @default(USER)
+  today_task_count    Int              @default(0)
+
   account_status      accountStatus    @default(INACTIVE)
   sign_up_ip          String?          @db.VarChar(45)
   login_count         Int              @default(0) // 로그인 횟수 필드 추가
@@ -447,6 +463,7 @@ enum reportStatus {
 
 enum role {
   USER
+  TEACHER
   ADMIN
 }
 

@@ -30,7 +30,9 @@ export class PostsService {
       type: createPostDto.type,
       status: isDraft ? 'DRAFT' : 'PUBLIC',
       user: { connect: { user_id: userId } },
-      category: { connect: { category_id: createPostDto.categoryId } },
+      ...(createPostDto.categoryId && {
+        category: { connect: { category_id: createPostDto.categoryId } },
+      }),
     };
 
     const post = await this.prisma.post.create({ data: postCreateInput });
@@ -61,10 +63,28 @@ export class PostsService {
             post_id: post.post_id,
             title: createPostDto.title,
             content: createPostDto.content,
-            points: createPostDto.points, // 포인트 설정
-            isAnswered: false, // 기본값 false
+            points: createPostDto.points,
+            isAnswered: false,
           },
         });
+        break;
+      case postType.SENTENCE:
+        await this.prisma.post_sentence.create({
+          data: {
+            post_id: post.post_id,
+            title: createPostDto.title,
+            content: createPostDto.content,
+          },
+        });
+
+        // 로그 기록 및 사용자의 today_task_count 증가
+        await Promise.all([
+          this.incrementTodayTaskLog(),
+          this.prisma.users.update({
+            where: { user_id: userId },
+            data: { today_task_count: { increment: 1 } },
+          }),
+        ]);
         break;
       default:
         throw new Error('Invalid post type');
@@ -562,5 +582,34 @@ export class PostsService {
         },
       },
     });
+  }
+
+  // 클래스 내에 새로운 private 메서드 추가
+  private async incrementTodayTaskLog() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // 한국 시간 기준 당일 00:00:00
+
+    const todayLog = await this.prisma.log.findFirst({
+      where: {
+        type: 'TODAY_TASK_PARTICIPATION',
+        created_at: {
+          gte: today,
+        },
+      },
+    });
+
+    if (todayLog) {
+      await this.prisma.log.update({
+        where: { log_id: todayLog.log_id },
+        data: { count: { increment: 1 } },
+      });
+    } else {
+      await this.prisma.log.create({
+        data: {
+          type: 'TODAY_TASK_PARTICIPATION',
+          count: 1,
+        },
+      });
+    }
   }
 }

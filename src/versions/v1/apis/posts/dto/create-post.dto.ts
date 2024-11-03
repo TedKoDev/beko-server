@@ -13,6 +13,7 @@ import { CreateMediaDto } from '../../media/dto';
 
 export class CreatePostDto {
   @IsNumber()
+  @IsOptional()
   categoryId: number;
 
   @IsString()
