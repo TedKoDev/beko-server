@@ -299,6 +299,15 @@ export class PostsService {
           },
         });
         break;
+      case postType.SENTENCE:
+        await this.prisma.post_sentence.update({
+          where: { post_id: id },
+          data: {
+            title: updatePostDto.title,
+            content: updatePostDto.content,
+          },
+        });
+        break;
       default:
         throw new Error('Invalid post type');
     }
@@ -435,6 +444,7 @@ export class PostsService {
           post_general: true,
           post_column: true,
           post_question: true,
+          post_sentence: true,
           media: true,
           comment: {
             where: {
@@ -473,6 +483,11 @@ export class PostsService {
           content: post.post_question.content,
           points: post.post_question.points,
           isAnswered: post.post_question.isAnswered,
+        };
+      } else if (post.post_sentence) {
+        post_content = {
+          title: post.post_sentence.title,
+          content: post.post_sentence.content,
         };
       }
       return {

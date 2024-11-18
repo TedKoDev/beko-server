@@ -107,6 +107,16 @@ export class AuthService {
   async loginUser(email: string, password: string) {
     const user = await this.prisma.users.findUnique({
       where: { email },
+      include: {
+        _count: {
+          select: {
+            post: true,
+            comment: true,
+            followers: true,
+            following: true,
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -142,25 +152,13 @@ export class AuthService {
 
     await this.updateUserLevel(user.user_id);
 
-    const expiredAt = dayjs().add(1, 'minute').toDate();
+    const payload = { userId: user.user_id, role: user.role };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '1w' });
 
-    const existingAuthCode = await this.prisma.authCode.findUnique({
-      where: { user_id: user.user_id },
-    });
-
-    if (existingAuthCode) {
-      await this.prisma.authCode.delete({ where: { user_id: user.user_id } });
-    }
-
-    const { code, keojak_code } = await this.prisma.authCode.create({
-      data: {
-        user_id: user.user_id,
-        expired_at: expiredAt,
-      },
-    });
-
-    console.log('user', user.user_id);
-    return { authCode: code, keojakCode: keojak_code, user };
+    return {
+      access_token: accessToken,
+      user: user,
+    };
   }
 
   // 이메일 인증
@@ -225,24 +223,6 @@ export class AuthService {
     }
   }
 
-  // 카페 24 인증 토큰 발급
-  async getToken(code: string) {
-    const codeInfo = await this.prisma.authCode.findUnique({ where: { code } });
-
-    if (!codeInfo) {
-      throw new Error('Invalid authorization code');
-    }
-
-    const isExpired = dayjs().isAfter(dayjs(codeInfo.expired_at));
-    if (isExpired) {
-      throw new Error('Authorization code expired');
-    }
-
-    const payload = { userId: codeInfo.user_id };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '1m' });
-    return { access_token: accessToken };
-  }
-
   // 커작 인증 토큰 발급
   async getKeojakToken(keojakCode: string) {
     const codeInfo = await this.prisma.authCode.findUnique({
@@ -271,7 +251,7 @@ export class AuthService {
   async getUserInfo(userId: number) {
     return this.prisma.users.findUnique({
       where: { user_id: userId },
-      select: { user_id: true, email: true, username: true },
+      // select: { user_id: true, email: true, username: true },
     });
   }
 
@@ -279,7 +259,7 @@ export class AuthService {
   async getUserInfoBody(userId: number) {
     return this.prisma.users.findUnique({
       where: { user_id: userId },
-      select: { user_id: true, email: true, username: true },
+      // select: { user_id: true, email: true, username: true },
     });
   }
 

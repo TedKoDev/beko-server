@@ -7,6 +7,7 @@ import { CommentsModule } from './apis/comments';
 import { EmailModule } from './apis/email';
 import { FollowModule } from './apis/follow';
 import { LikesModule } from './apis/likes';
+import { LogsModule } from './apis/logsdata';
 import { PointsModule } from './apis/point';
 import { PostsModule } from './apis/posts';
 import { ReportModule } from './apis/report';
@@ -36,6 +37,7 @@ import { WordModule } from './apis/word';
     SearchModule,
     SlackModule, // Import the Slack module
     S3Module, // Import the S3 module
+    LogsModule,
   ],
 })
 export class V1Module {}
