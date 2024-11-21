@@ -59,6 +59,12 @@ export class PostsController {
   }
 
   @Auth(['ANY'])
+  @Get('topics')
+  getTopicsWithCategories() {
+    return this.postsService.getTopicsWithCategories();
+  }
+
+  @Auth(['ANY'])
   @Get(':id')
   async findOne(@Param('id') id: number) {
     await this.postsService.incrementViewCount(id);
@@ -83,5 +89,11 @@ export class PostsController {
     @Req() req: { user: { userId: number; role: string } },
   ) {
     return this.postsService.remove(id, req.user.userId, req.user.role);
+  }
+
+  @Auth(['ANY'])
+  @Get('categories/:topicId')
+  getCategoriesByTopic(@Param('topicId') topicId: number) {
+    return this.postsService.getCategoriesByTopic(topicId);
   }
 }

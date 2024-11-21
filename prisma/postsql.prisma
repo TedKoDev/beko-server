@@ -173,6 +173,9 @@ model wordlist {
   word_id        Int       @id @default(autoincrement())
   word           String    @db.VarChar(255)  @unique
   part_of_speech String    @db.VarChar(50)  // 동사, 명사, 형용사 등
+  meaning_en     String    @db.VarChar(255)  // 영어 의미
+  example_sentence String?  @db.Text         // 예시 문장
+  example_translation String? @db.Text       // 예시 문장 영어 번역 (선택적)
   usage_count    Int       @default(0)      // 단어가 사용된 횟수
   created_at     DateTime  @default(now()) @db.Timestamp
   updated_at     DateTime? @db.Timestamp

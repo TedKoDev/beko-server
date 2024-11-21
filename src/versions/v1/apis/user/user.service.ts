@@ -158,4 +158,54 @@ export class UserService {
       },
     };
   }
+
+  // 현재 로그인한 사용자의 정보 조회
+  async getCurrentUser(userId: number) {
+    const user = await this.prisma.users.findUnique({
+      where: { user_id: userId },
+      include: {
+        post: {
+          where: { deleted_at: null },
+        },
+        comment: {
+          where: { deleted_at: null },
+        },
+        like: {
+          where: { deleted_at: null },
+        },
+        following: true,
+        followers: true,
+        social_login: {
+          where: { deleted_at: null },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      user_id: user.user_id,
+      username: user.username,
+      email: user.email,
+      bio: user.bio,
+      profile_picture_url: user.profile_picture_url,
+      points: user.points,
+      level: user.level,
+      today_task_count: user.today_task_count,
+      role: user.role,
+      account_status: user.account_status,
+      created_at: user.created_at,
+      last_login_at: user.last_login_at,
+
+      stats: {
+        postCount: user.post.length,
+        commentCount: user.comment.length,
+        likedPostsCount: user.like.length,
+        followingCount: user.following.length,
+        followersCount: user.followers.length,
+      },
+    };
+  }
 }

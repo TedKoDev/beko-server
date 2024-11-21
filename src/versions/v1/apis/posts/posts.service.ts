@@ -23,88 +23,94 @@ export class PostsService {
 
   // 게시글 생성
   async create(userId: number, createPostDto: CreatePostDto, isDraft = false) {
-    // 포인트 차감 로직 생략...
+    // 트랜잭션으로 모든 작업을 묶음
+    return this.prisma.$transaction(async (tx) => {
+      const postCreateInput: Prisma.postCreateInput = {
+        type: createPostDto.type,
+        status: isDraft ? 'DRAFT' : 'PUBLIC',
+        user: { connect: { user_id: userId } },
+        ...(createPostDto.categoryId && {
+          category: { connect: { category_id: createPostDto.categoryId } },
+        }),
+      };
 
-    // 게시글 생성
-    const postCreateInput: Prisma.postCreateInput = {
-      type: createPostDto.type,
-      status: isDraft ? 'DRAFT' : 'PUBLIC',
-      user: { connect: { user_id: userId } },
-      ...(createPostDto.categoryId && {
-        category: { connect: { category_id: createPostDto.categoryId } },
-      }),
-    };
+      const post = await tx.post.create({ data: postCreateInput });
 
-    const post = await this.prisma.post.create({ data: postCreateInput });
+      switch (createPostDto.type) {
+        case postType.GENERAL:
+          await tx.post_general.create({
+            data: {
+              post_id: post.post_id,
+              title: createPostDto.title || '',
+              content: createPostDto.content,
+            },
+          });
+          break;
+        case postType.COLUMN:
+          await tx.post_column.create({
+            data: {
+              post_id: post.post_id,
+              title: createPostDto.title || '',
+              content: createPostDto.content,
+            },
+          });
+          break;
+        case postType.QUESTION:
+          await tx.post_question.create({
+            data: {
+              post_id: post.post_id,
+              title: createPostDto.title || '',
+              content: createPostDto.content,
+              points: createPostDto.points || 0,
+            },
+          });
+          break;
+        case postType.SENTENCE:
+          await tx.post_sentence.create({
+            data: {
+              post_id: post.post_id,
+              title: createPostDto.title || '',
+              content: createPostDto.content,
+            },
+          });
 
-    // 게시글 유형별 데이터 생성
-    switch (createPostDto.type) {
-      case postType.GENERAL:
-        await this.prisma.post_general.create({
-          data: {
-            post_id: post.post_id,
-            title: createPostDto.title,
-            content: createPostDto.content,
-          },
-        });
-        break;
-      case postType.COLUMN:
-        await this.prisma.post_column.create({
-          data: {
-            post_id: post.post_id,
-            title: createPostDto.title,
-            content: createPostDto.content,
-          },
-        });
-        break;
-      case postType.QUESTION:
-        await this.prisma.post_question.create({
-          data: {
-            post_id: post.post_id,
-            title: createPostDto.title,
-            content: createPostDto.content,
-            points: createPostDto.points,
-            isAnswered: false,
-          },
-        });
-        break;
-      case postType.SENTENCE:
-        await this.prisma.post_sentence.create({
-          data: {
-            post_id: post.post_id,
-            title: createPostDto.title,
-            content: createPostDto.content,
-          },
-        });
-
-        // 로그 기록 및 사용자의 today_task_count 증가
-        await Promise.all([
-          this.incrementTodayTaskLog(),
-          this.prisma.users.update({
+          // today_task_count 증가
+          await tx.users.update({
             where: { user_id: userId },
             data: { today_task_count: { increment: 1 } },
-          }),
-        ]);
-        break;
-      default:
-        throw new Error('Invalid post type');
-    }
+          });
 
-    // 미디어 데이터 생성
-    if (createPostDto.media && createPostDto.media.length > 0) {
-      const mediaData = createPostDto.media.map((media) => ({
-        ...media,
-        postId: post.post_id,
-      }));
-      await this.mediaService.createMedia(mediaData);
-    }
+          // 로그 기록
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
 
-    // 태그 데이터 생성
-    if (createPostDto.tags && createPostDto.tags.length > 0) {
-      await this.handleTags(post.post_id, createPostDto.tags, false);
-    }
+          const todayLog = await tx.log.findFirst({
+            where: {
+              type: 'TODAY_TASK_PARTICIPATION',
+              created_at: { gte: today },
+            },
+          });
 
-    return post;
+          if (todayLog) {
+            await tx.log.update({
+              where: { log_id: todayLog.log_id },
+              data: { count: { increment: 1 } },
+            });
+          } else {
+            await tx.log.create({
+              data: {
+                type: 'TODAY_TASK_PARTICIPATION',
+                count: 1,
+              },
+            });
+          }
+          break;
+        default:
+          throw new Error('Invalid post type');
+      }
+
+      return post;
+    });
   }
 
   // 임시저장 생성
@@ -138,7 +144,9 @@ export class PostsService {
         post_general: true,
         post_column: true,
         post_question: true,
+        post_sentence: true,
         media: true,
+        category: true, // Include category details
       },
     });
 
@@ -166,6 +174,7 @@ export class PostsService {
         post_id: post.post_id,
         user_id: post.user_id,
         category_id: post.category_id,
+        category_name: post.category?.category_name, // Include category name
         type: post.type,
         status: post.status,
         views: post.views,
@@ -452,6 +461,7 @@ export class PostsService {
             },
             take: 3, // 최대 3개의 댓글만 가져오기
           },
+          category: true, // Include category details
         },
       }),
       this.prisma.post.count({
@@ -495,6 +505,9 @@ export class PostsService {
         user_id: post.user_id,
         username: post.user.username, // Include the user's name
         category_id: post.category_id,
+        user_profile_picture_url: post.user.profile_picture_url,
+        user_level: post.user.level,
+        category_name: post.category?.category_name, // Include category name
         type: post.type,
         status: post.status,
         views: post.views,
@@ -529,6 +542,7 @@ export class PostsService {
         post_general: true,
         post_column: true,
         post_question: true,
+        post_sentence: true,
         media: {
           where: {
             deleted_at: null,
@@ -540,6 +554,7 @@ export class PostsService {
           },
           take: 5, // 최대 5개의 댓글만 가져오기
         },
+        category: true, // Include category details
       },
     });
 
@@ -565,13 +580,22 @@ export class PostsService {
         points: post.post_question.points,
         isAnswered: post.post_question.isAnswered,
       };
+    } else if (post.post_sentence) {
+      post_content = {
+        title: post.post_sentence.title,
+        content: post.post_sentence.content,
+      };
     }
 
     const integratedPost = {
       post_id: post.post_id,
       user_id: post.user_id,
       username: post.user.username, // Include the user's name
+      user_profile_picture_url: post.user.profile_picture_url,
+      user_level: post.user.level,
       category_id: post.category_id,
+
+      category_name: post.category?.category_name, // Include category name
       type: post.type,
       status: post.status,
       views: post.views,
@@ -626,5 +650,56 @@ export class PostsService {
         },
       });
     }
+  }
+
+  // 특정 토픽의 카테고리 조회
+  async getCategoriesByTopic(topicId: number) {
+    const topic = await this.prisma.topic.findFirst({
+      where: {
+        topic_id: topicId,
+        deleted_at: null,
+      },
+      select: {
+        topic_id: true,
+        title: true,
+        category: {
+          where: {
+            deleted_at: null,
+          },
+          select: {
+            category_id: true,
+            category_name: true,
+          },
+        },
+      },
+    });
+
+    if (!topic) {
+      throw new NotFoundException('Topic not found');
+    }
+
+    return topic;
+  }
+
+  // 모든 토픽과 카테고리 조회
+  async getTopicsWithCategories() {
+    return this.prisma.topic.findMany({
+      where: {
+        deleted_at: null,
+      },
+      select: {
+        topic_id: true,
+        title: true,
+        category: {
+          where: {
+            deleted_at: null,
+          },
+          select: {
+            category_id: true,
+            category_name: true,
+          },
+        },
+      },
+    });
   }
 }

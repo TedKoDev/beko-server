@@ -9,11 +9,13 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
 
 import { Auth } from '@/decorators';
 import { ROLE } from '@/types/v1';
+import { JwtAuthGuard } from '../auth';
 import { PaginationQueryDto } from './dto';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { USER_SERVIE_TOKEN, UserService } from './user.service';
@@ -86,5 +88,12 @@ export class UserController {
       }
       throw error;
     }
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getCurrentUser(@Req() req) {
+    const userId = req.user.userId; // JWT에서 추출한 userId
+    return this.userService.getCurrentUser(userId);
   }
 }
