@@ -25,6 +25,7 @@ import { USER_SERVIE_TOKEN, UserService } from './user.service';
   version: '1',
 })
 export class UserController {
+  s3Service: any;
   constructor(
     @Inject(USER_SERVIE_TOKEN)
     private readonly userService: UserService,
@@ -41,13 +42,22 @@ export class UserController {
     @Body() dto: UpdateUserProfileDto,
     @Res() res: Response,
   ) {
-    const { userId, username, bio } = dto;
-    const updatedUser = await this.userService.updateUser(
-      userId,
-      username,
-      bio,
-    );
+    const updatedUser = await this.userService.updateUser(dto.userId, {
+      username: dto.username,
+      bio: dto.bio,
+      profilePictureUrl: dto.profilePictureUrl,
+    });
     return res.status(200).json(updatedUser);
+  }
+
+  @Get('profile-image-upload-url')
+  @Auth(['ANY'])
+  async getProfileImageUploadUrl(
+    @Query('fileName') fileName: string,
+    @Query('fileType') fileType: string,
+  ) {
+    const key = `profile-images/${Date.now()}-${fileName}`;
+    return this.s3Service.getPresignedUrl(key, fileType);
   }
 
   @Get('check-username')

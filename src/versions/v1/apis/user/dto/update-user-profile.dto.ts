@@ -13,4 +13,8 @@ export class UpdateUserProfileDto {
   @IsString()
   @IsOptional()
   bio?: string;
+
+  @IsString()
+  @IsOptional()
+  profilePictureUrl?: string;
 }

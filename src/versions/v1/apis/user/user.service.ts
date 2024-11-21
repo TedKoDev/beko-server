@@ -17,16 +17,23 @@ export class UserService {
   }
 
   // 사용자 정보 수정
-  async updateUser(userId: number, username: string, bio: string) {
+  async updateUser(
+    userId: number,
+    updateData: {
+      username: string;
+      bio: string;
+      profilePictureUrl?: string;
+    },
+  ) {
     // 중복된 username 확인
-    let finalUsername = username;
+    let finalUsername = updateData.username;
     const existingUser = await this.prisma.users.findUnique({
-      where: { username },
+      where: { username: updateData.username },
     });
 
     if (existingUser && existingUser.user_id !== userId) {
-      const uniqueSuffix = `#${uuidv4().slice(0, 8)}`; // uuid의 앞 8자리 사용
-      finalUsername = `${username}${uniqueSuffix}`;
+      const uniqueSuffix = `#${uuidv4().slice(0, 8)}`;
+      finalUsername = `${updateData.username}${uniqueSuffix}`;
     }
 
     // 사용자 정보 업데이트
@@ -34,7 +41,9 @@ export class UserService {
       where: { user_id: userId },
       data: {
         username: finalUsername,
-        bio,
+        bio: updateData.bio,
+        profile_picture_url: updateData.profilePictureUrl,
+        updated_at: new Date(),
       },
     });
   }

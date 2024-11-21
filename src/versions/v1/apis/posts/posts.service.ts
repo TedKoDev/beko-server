@@ -23,8 +23,37 @@ export class PostsService {
 
   // 게시글 생성
   async create(userId: number, createPostDto: CreatePostDto, isDraft = false) {
-    // 트랜잭션으로 모든 작업을 묶음
     return this.prisma.$transaction(async (tx) => {
+      // 질문 타입일 경우 포인트 체크
+      if (createPostDto.type === postType.QUESTION && !isDraft) {
+        const user = await tx.users.findUnique({
+          where: { user_id: userId },
+        });
+
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        if (user.points < createPostDto.points) {
+          throw new BadRequestException('Not enough points');
+        }
+
+        // 포인트 차감
+        await tx.users.update({
+          where: { user_id: userId },
+          data: { points: { decrement: createPostDto.points } },
+        });
+
+        // 포인트 내역 추가
+        await tx.point.create({
+          data: {
+            user_id: userId,
+            points_change: -createPostDto.points,
+            change_reason: 'Question post created',
+          },
+        });
+      }
+
       const postCreateInput: Prisma.postCreateInput = {
         type: createPostDto.type,
         status: isDraft ? 'DRAFT' : 'PUBLIC',
@@ -36,6 +65,18 @@ export class PostsService {
 
       const post = await tx.post.create({ data: postCreateInput });
 
+      // 미디어 데이터 저장
+      if (createPostDto.media && createPostDto.media.length > 0) {
+        const mediaData = createPostDto.media.map((media) => ({
+          media_url: media.mediaUrl,
+          media_type: media.mediaType,
+          post_id: post.post_id,
+        }));
+
+        await tx.media.createMany({ data: mediaData });
+      }
+
+      // 게시글 타입별 데이터 생성
       switch (createPostDto.type) {
         case postType.GENERAL:
           await tx.post_general.create({
