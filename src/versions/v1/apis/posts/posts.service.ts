@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { postType, Prisma } from '@prisma/client';
 import { MediaService } from '../media';
-import { CreateMediaDto } from '../media/dto';
 import { PointsService } from '../point/points.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
@@ -232,156 +231,110 @@ export class PostsService {
   }
 
   // 게시글 업데이트
-  async update(id: number, userId: number, updatePostDto: UpdatePostDto) {
-    const post = await this.prisma.post.findUnique({
-      where: { post_id: id },
-      include: { user: true, post_question: true },
+  async update(postId: number, userId: number, updatePostDto: UpdatePostDto) {
+    console.log('Update Data ', updatePostDto);
+
+    return this.prisma.$transaction(async (tx) => {
+      // 게시글 존재 및 권한 확인
+      const post = await tx.post.findFirst({
+        where: {
+          post_id: postId,
+          user_id: userId,
+          deleted_at: null,
+        },
+        include: { media: true },
+      });
+
+      if (!post) {
+        throw new NotFoundException('Post not found or unauthorized');
+      }
+
+      // 미디어 처리
+      // 이미지가 없거나 빈 배열인 경우에도 기존 미디어 삭제
+      if (!updatePostDto.media || updatePostDto.media.length === 0) {
+        // 기존 미디어 모두 소프트 삭제
+        await tx.media.updateMany({
+          where: {
+            post_id: postId,
+            deleted_at: null,
+          },
+          data: { deleted_at: new Date() },
+        });
+      } else {
+        // 기존 미디어 소프트 삭제
+        await tx.media.updateMany({
+          where: {
+            post_id: postId,
+            deleted_at: null,
+          },
+          data: { deleted_at: new Date() },
+        });
+
+        // 새로운 미디어 생성
+        const mediaData = updatePostDto.media.map((media) => ({
+          post_id: postId,
+          media_url: media.mediaUrl,
+          media_type: media.mediaType,
+        }));
+
+        await tx.media.createMany({ data: mediaData });
+      }
+
+      // 게시글 타입별 내용 업데이트
+      switch (post.type) {
+        case 'GENERAL':
+          await tx.post_general.update({
+            where: { post_id: postId },
+            data: {
+              title: updatePostDto.title,
+              content: updatePostDto.content,
+            },
+          });
+          break;
+        case 'COLUMN':
+          await tx.post_column.update({
+            where: { post_id: postId },
+            data: {
+              title: updatePostDto.title,
+              content: updatePostDto.content,
+            },
+          });
+          break;
+        case 'QUESTION':
+          await tx.post_question.update({
+            where: { post_id: postId },
+            data: {
+              title: updatePostDto.title,
+              content: updatePostDto.content,
+              points: updatePostDto.points,
+              isAnswered: updatePostDto.isAnswered,
+            },
+          });
+          break;
+        case 'SENTENCE':
+          await tx.post_sentence.update({
+            where: { post_id: postId },
+            data: {
+              title: updatePostDto.title,
+              content: updatePostDto.content,
+            },
+          });
+          break;
+      }
+
+      // 메인 게시글 업데이트
+      await tx.post.update({
+        where: { post_id: postId },
+        data: {
+          updated_at: new Date(),
+          ...(updatePostDto.categoryId && {
+            category: { connect: { category_id: updatePostDto.categoryId } },
+          }),
+        },
+      });
+
+      return this.findOne(postId);
     });
-
-    if (!post) {
-      throw new NotFoundException('Post not found');
-    }
-
-    if (post.user_id !== userId) {
-      const user = await this.prisma.users.findUnique({
-        where: { user_id: userId },
-      });
-      if (user.role !== 'ADMIN') {
-        throw new ForbiddenException(
-          'You do not have permission to update this post',
-        );
-      }
-    }
-
-    if (post.post_question && post.post_question.isAnswered) {
-      throw new BadRequestException(
-        'Cannot update a post that has been answered',
-      );
-    }
-
-    if (
-      updatePostDto.type === postType.QUESTION &&
-      updatePostDto.points !== undefined
-    ) {
-      const user = await this.prisma.users.findUnique({
-        where: { user_id: userId },
-      });
-
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
-      const existingPoints = post.post_question.points;
-
-      if (user.points + existingPoints < updatePostDto.points) {
-        throw new BadRequestException('Not enough points');
-      }
-
-      // 기존 포인트 반환
-      await this.prisma.users.update({
-        where: { user_id: userId },
-        data: { points: { increment: existingPoints } },
-      });
-
-      // 기존 포인트 내역 추가
-      await this.pointsService.create(userId, {
-        pointsChange: existingPoints,
-        changeReason: 'Question post updated',
-      });
-
-      // 새로운 포인트 차감
-      await this.prisma.users.update({
-        where: { user_id: userId },
-        data: { points: { decrement: updatePostDto.points } },
-      });
-
-      // 새로운 포인트 내역 추가
-      await this.pointsService.create(userId, {
-        pointsChange: -updatePostDto.points,
-        changeReason: 'Question post updated',
-      });
-    }
-
-    // 게시글 업데이트 입력 데이터 생성
-    const postUpdateInput: Prisma.postUpdateInput = {
-      type: updatePostDto.type
-        ? { set: updatePostDto.type as postType }
-        : undefined,
-      category: updatePostDto.categoryId
-        ? { connect: { category_id: updatePostDto.categoryId } }
-        : undefined,
-    };
-
-    // 게시글 업데이트
-    const updatedPost = await this.prisma.post.update({
-      where: { post_id: id },
-      data: postUpdateInput,
-    });
-
-    // 게시글 유형별 데이터 업데이트
-    switch (updatePostDto.type) {
-      case postType.GENERAL:
-        await this.prisma.post_general.update({
-          where: { post_id: id },
-          data: {
-            title: updatePostDto.title,
-            content: updatePostDto.content,
-          },
-        });
-        break;
-      case postType.COLUMN:
-        await this.prisma.post_column.update({
-          where: { post_id: id },
-          data: {
-            title: updatePostDto.title,
-            content: updatePostDto.content,
-          },
-        });
-        break;
-      case postType.QUESTION:
-        await this.prisma.post_question.update({
-          where: { post_id: id },
-          data: {
-            title: updatePostDto.title,
-            content: updatePostDto.content,
-            points: updatePostDto.points, // 포인트 업데이트
-            isAnswered: updatePostDto.isAnswered, // isAnswered 업데이트
-          },
-        });
-        break;
-      case postType.SENTENCE:
-        await this.prisma.post_sentence.update({
-          where: { post_id: id },
-          data: {
-            title: updatePostDto.title,
-            content: updatePostDto.content,
-          },
-        });
-        break;
-      default:
-        throw new Error('Invalid post type');
-    }
-
-    // 미디어 데이터 업데이트
-    await this.mediaService.deleteMediaByPostId(updatedPost.post_id);
-
-    if (updatePostDto.media && updatePostDto.media.length > 0) {
-      const newMedia: CreateMediaDto[] = updatePostDto.media.map((media) => ({
-        mediaUrl: media.mediaUrl,
-        mediaType: media.mediaType,
-        postId: updatedPost.post_id,
-      }));
-      await this.mediaService.createMedia(newMedia);
-    }
-
-    // 태그 데이터 업데이트
-    await this.prisma.postTag.deleteMany({ where: { post_id: id } });
-
-    if (updatePostDto.tags && updatePostDto.tags.length > 0) {
-      await this.handleTags(updatedPost.post_id, updatePostDto.tags, false);
-    }
-
-    return updatedPost;
   }
 
   // 게시글 삭제

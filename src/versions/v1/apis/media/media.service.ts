@@ -43,14 +43,11 @@ export class MediaService {
       where: { comment_id: commentId, deleted_at: null },
     });
   }
-
   async updateMedia(mediaId: number, updateMediaDto: UpdateMediaDto) {
-    const { mediaUrl, mediaType, postId, commentId } = updateMediaDto;
+    const { mediaUrl, mediaType } = updateMediaDto;
     return this.prisma.media.update({
       where: { media_id: mediaId },
       data: {
-        post_id: postId,
-        comment_id: commentId,
         media_url: mediaUrl,
         media_type: mediaType,
         updated_at: new Date(),
