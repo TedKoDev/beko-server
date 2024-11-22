@@ -4,7 +4,7 @@ import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 export class UpdateMediaDto {
   @IsOptional()
   @IsInt()
-  mediaId?: number;
+  mediaId?: number; // media_id를 mediaId로 변경
 
   @IsString()
   mediaUrl: string;

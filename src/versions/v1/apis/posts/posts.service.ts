@@ -235,7 +235,6 @@ export class PostsService {
     console.log('Update Data ', updatePostDto);
 
     return this.prisma.$transaction(async (tx) => {
-      // 게시글 존재 및 권한 확인
       const post = await tx.post.findFirst({
         where: {
           post_id: postId,
@@ -250,34 +249,47 @@ export class PostsService {
       }
 
       // 미디어 처리
-      // 이미지가 없거나 빈 배열인 경우에도 기존 미디어 삭제
-      if (!updatePostDto.media || updatePostDto.media.length === 0) {
-        // 기존 미디어 모두 소프트 삭제
+      if (updatePostDto.media) {
+        // 기존 미디어 ID 목록
+        const existingMediaIds = updatePostDto.media
+          .filter((media) => media.mediaId)
+          .map((media) => media.mediaId);
+
+        // 기존 미디어 중 업데이트할 미디어가 아닌 것들은 삭제
         await tx.media.updateMany({
           where: {
             post_id: postId,
             deleted_at: null,
-          },
-          data: { deleted_at: new Date() },
-        });
-      } else {
-        // 기존 미디어 소프트 삭제
-        await tx.media.updateMany({
-          where: {
-            post_id: postId,
-            deleted_at: null,
+            NOT: {
+              media_id: { in: existingMediaIds },
+            },
           },
           data: { deleted_at: new Date() },
         });
 
-        // 새로운 미디어 생성
-        const mediaData = updatePostDto.media.map((media) => ({
-          post_id: postId,
-          media_url: media.mediaUrl,
-          media_type: media.mediaType,
-        }));
-
-        await tx.media.createMany({ data: mediaData });
+        // 미디어 처리
+        for (const media of updatePostDto.media) {
+          if (media.mediaId) {
+            // 기존 미디어 업데이트
+            await tx.media.update({
+              where: { media_id: media.mediaId },
+              data: {
+                media_url: media.mediaUrl,
+                media_type: media.mediaType,
+                updated_at: new Date(),
+              },
+            });
+          } else {
+            // 새로운 미디어 생성
+            await tx.media.create({
+              data: {
+                post_id: postId,
+                media_url: media.mediaUrl,
+                media_type: media.mediaType,
+              },
+            });
+          }
+        }
       }
 
       // 게시글 타입별 내용 업데이트
