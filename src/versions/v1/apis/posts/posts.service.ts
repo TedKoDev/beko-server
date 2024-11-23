@@ -248,7 +248,7 @@ export class PostsService {
         throw new NotFoundException('Post not found or unauthorized');
       }
 
-      // 미디어 처리
+      // 미디어 ���리
       if (updatePostDto.media) {
         // 기존 미디어 ID 목록
         const existingMediaIds = updatePostDto.media
@@ -540,7 +540,6 @@ export class PostsService {
     const post = await this.prisma.post.findFirst({
       where: {
         post_id: id,
-        // status: 'PUBLIC',
         deleted_at: null,
       },
       include: {
@@ -558,9 +557,45 @@ export class PostsService {
           where: {
             deleted_at: null,
           },
-          take: 5, // 최대 5개의 댓글만 가져오기
+          take: 5,
+          include: {
+            user: {
+              select: {
+                user_id: true,
+                username: true,
+                profile_picture_url: true,
+                level: true,
+              },
+            },
+            media: {
+              where: {
+                deleted_at: null,
+              },
+            },
+            _count: {
+              select: {
+                childComments: {
+                  where: {
+                    deleted_at: null,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            created_at: 'desc',
+          },
         },
-        category: true, // Include category details
+        _count: {
+          select: {
+            comment: {
+              where: {
+                deleted_at: null,
+              },
+            },
+          },
+        },
+        category: true,
       },
     });
 
@@ -596,12 +631,11 @@ export class PostsService {
     const integratedPost = {
       post_id: post.post_id,
       user_id: post.user_id,
-      username: post.user.username, // Include the user's name
+      username: post.user.username,
       user_profile_picture_url: post.user.profile_picture_url,
       user_level: post.user.level,
       category_id: post.category_id,
-
-      category_name: post.category?.category_name, // Include category name
+      category_name: post.category?.category_name,
       type: post.type,
       status: post.status,
       views: post.views,
@@ -611,7 +645,11 @@ export class PostsService {
       deleted_at: post.deleted_at,
       post_content,
       media: post.media,
-      comments: post.comment,
+      comments: post.comment.map((comment) => ({
+        ...comment,
+        reply_count: comment._count.childComments,
+      })),
+      comment_count: post._count.comment,
     };
 
     return integratedPost;
