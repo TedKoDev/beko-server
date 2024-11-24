@@ -1,7 +1,8 @@
 // src/posts/dto/create-post.dto.ts
-import { postType } from '@prisma/client';
+import { postStatus, postType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -40,4 +41,16 @@ export class CreatePostDto {
   @IsOptional()
   @IsString({ each: true })
   tags?: string[];
+
+  @IsOptional()
+  @IsString()
+  status?: postStatus;
+
+  @IsOptional()
+  @IsNumber()
+  basePrice?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrivate?: boolean;
 }

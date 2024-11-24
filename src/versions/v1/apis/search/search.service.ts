@@ -59,6 +59,16 @@ export class SearchService {
             category_name: { contains: query, mode: 'insensitive' },
           },
         },
+        {
+          post_consultation: {
+            title: { contains: query, mode: 'insensitive' },
+          },
+        },
+        {
+          post_consultation: {
+            content: { contains: query, mode: 'insensitive' },
+          },
+        },
       ],
     };
 
@@ -89,6 +99,7 @@ export class SearchService {
             user: true,
             category: true,
             postTag: { include: { tag: true } },
+            post_consultation: true,
           },
         })
         .then((posts) => posts.map((post) => this.integratePostContent(post))),

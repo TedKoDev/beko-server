@@ -145,6 +145,19 @@ export class PostsService {
             });
           }
           break;
+        case postType.CONSULTATION:
+          await tx.post_consultation.create({
+            data: {
+              post_id: post.post_id,
+              student_id: userId,
+              title: createPostDto.title || '',
+              content: createPostDto.content,
+              base_price: createPostDto.basePrice || 0,
+              is_private: createPostDto.isPrivate ?? true,
+              status: 'PENDING',
+            },
+          });
+          break;
         default:
           throw new Error('Invalid post type');
       }
@@ -248,7 +261,7 @@ export class PostsService {
         throw new NotFoundException('Post not found or unauthorized');
       }
 
-      // 미디어 ���리
+      // 미디어 리
       if (updatePostDto.media) {
         // 기존 미디어 ID 목록
         const existingMediaIds = updatePostDto.media
@@ -331,6 +344,33 @@ export class PostsService {
               content: updatePostDto.content,
             },
           });
+          break;
+        case 'CONSULTATION':
+          await tx.post_consultation.update({
+            where: { post_id: postId },
+            data: {
+              title: updatePostDto.title,
+              content: updatePostDto.content,
+              base_price: updatePostDto.basePrice,
+              status: updatePostDto.consultationStatus,
+              is_private: updatePostDto.isPrivate,
+              teacher_id: updatePostDto.teacherId,
+              completed_at:
+                updatePostDto.consultationStatus === 'COMPLETED'
+                  ? new Date()
+                  : null,
+            },
+          });
+
+          // post 테이블의 status도 함께 업데이트
+          if (updatePostDto.status) {
+            await tx.post.update({
+              where: { post_id: postId },
+              data: {
+                status: updatePostDto.status,
+              },
+            });
+          }
           break;
       }
 
@@ -460,6 +500,7 @@ export class PostsService {
           post_column: true,
           post_question: true,
           post_sentence: true,
+          post_consultation: true,
           media: true,
           comment: {
             where: {
@@ -504,6 +545,17 @@ export class PostsService {
         post_content = {
           title: post.post_sentence.title,
           content: post.post_sentence.content,
+        };
+      } else if (post.post_consultation) {
+        post_content = {
+          title: post.post_consultation.title,
+          content: post.post_consultation.content,
+          base_price: post.post_consultation.base_price,
+          status: post.post_consultation.status,
+          is_private: post.post_consultation.is_private,
+          student_id: post.post_consultation.student_id,
+          teacher_id: post.post_consultation.teacher_id,
+          completed_at: post.post_consultation.completed_at,
         };
       }
       return {
