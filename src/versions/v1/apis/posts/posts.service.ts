@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { postType, Prisma } from '@prisma/client';
 import { MediaService } from '../media';
 import { PointsService } from '../point/points.service';
@@ -18,6 +19,7 @@ export class PostsService {
     private prisma: PrismaService,
     private mediaService: MediaService,
     private pointsService: PointsService, // PointsService 주입
+    private jwtService: JwtService,
   ) {}
 
   // 게시글 생성
@@ -467,7 +469,8 @@ export class PostsService {
   }
 
   // 게시글 목록 조회 (페이지네이션 적용)
-  async findAll(paginationQuery: PaginationQueryDto) {
+  async findAll(paginationQuery: PaginationQueryDto, authHeader: string) {
+    const userId = this.extractUserIdFromToken(authHeader);
     const { page = 1, limit = 10, type, sort = 'latest' } = paginationQuery;
     const skip = (page - 1) * limit;
 
@@ -508,6 +511,15 @@ export class PostsService {
             },
             take: 3, // 최대 3개의 댓글만 가져오기
           },
+          _count: {
+            select: {
+              comment: {
+                where: {
+                  deleted_at: null,
+                },
+              },
+            },
+          },
           category: true, // Include category details
         },
       }),
@@ -521,66 +533,76 @@ export class PostsService {
       posts.sort((a, b) => b.likes * 2 + b.views - (a.likes * 2 + a.views));
     }
 
-    // 유형별 데이터를 post_content 필드로 통합하여 반환
-    const integratedPosts = posts.map((post) => {
-      let post_content = {};
-      if (post.post_general) {
-        post_content = {
-          title: post.post_general.title,
-          content: post.post_general.content,
+    // 각 게시글에 대해 사용자가 좋아요를 눌렀는지 확인
+    const postsWithLikes = await Promise.all(
+      posts.map(async (post) => {
+        const userLikedPost = await this.prisma.like.findFirst({
+          where: { user_id: userId, post_id: post.post_id, deleted_at: null },
+        });
+
+        // 유저가 게시글을 좋아요를 눌렀는지 확인
+        let post_content = {};
+        if (post.post_general) {
+          post_content = {
+            title: post.post_general.title,
+            content: post.post_general.content,
+          };
+        } else if (post.post_column) {
+          post_content = {
+            title: post.post_column.title,
+            content: post.post_column.content,
+          };
+        } else if (post.post_question) {
+          post_content = {
+            title: post.post_question.title,
+            content: post.post_question.content,
+            points: post.post_question.points,
+            isAnswered: post.post_question.isAnswered,
+          };
+        } else if (post.post_sentence) {
+          post_content = {
+            title: post.post_sentence.title,
+            content: post.post_sentence.content,
+          };
+        } else if (post.post_consultation) {
+          post_content = {
+            title: post.post_consultation.title,
+            content: post.post_consultation.content,
+            base_price: post.post_consultation.base_price,
+            status: post.post_consultation.status,
+            is_private: post.post_consultation.is_private,
+            student_id: post.post_consultation.student_id,
+            teacher_id: post.post_consultation.teacher_id,
+            completed_at: post.post_consultation.completed_at,
+          };
+        }
+
+        return {
+          post_id: post.post_id,
+          user_id: post.user_id,
+          username: post.user.username,
+          user_profile_picture_url: post.user.profile_picture_url,
+          user_level: post.user.level,
+          category_id: post.category_id,
+          category_name: post.category?.category_name,
+          type: post.type,
+          status: post.status,
+          views: post.views,
+          likes: post.likes,
+          created_at: post.created_at,
+          updated_at: post.updated_at,
+          deleted_at: post.deleted_at,
+          post_content,
+          media: post.media,
+          comments: post.comment,
+          comment_count: post._count.comment,
+          user_liked: !!userLikedPost, // 사용자가 좋아요를 눌렀는지 여부
         };
-      } else if (post.post_column) {
-        post_content = {
-          title: post.post_column.title,
-          content: post.post_column.content,
-        };
-      } else if (post.post_question) {
-        post_content = {
-          title: post.post_question.title,
-          content: post.post_question.content,
-          points: post.post_question.points,
-          isAnswered: post.post_question.isAnswered,
-        };
-      } else if (post.post_sentence) {
-        post_content = {
-          title: post.post_sentence.title,
-          content: post.post_sentence.content,
-        };
-      } else if (post.post_consultation) {
-        post_content = {
-          title: post.post_consultation.title,
-          content: post.post_consultation.content,
-          base_price: post.post_consultation.base_price,
-          status: post.post_consultation.status,
-          is_private: post.post_consultation.is_private,
-          student_id: post.post_consultation.student_id,
-          teacher_id: post.post_consultation.teacher_id,
-          completed_at: post.post_consultation.completed_at,
-        };
-      }
-      return {
-        post_id: post.post_id,
-        user_id: post.user_id,
-        username: post.user.username, // Include the user's name
-        category_id: post.category_id,
-        user_profile_picture_url: post.user.profile_picture_url,
-        user_level: post.user.level,
-        category_name: post.category?.category_name, // Include category name
-        type: post.type,
-        status: post.status,
-        views: post.views,
-        likes: post.likes,
-        created_at: post.created_at,
-        updated_at: post.updated_at,
-        deleted_at: post.deleted_at,
-        post_content,
-        media: post.media,
-        comments: post.comment,
-      };
-    });
+      }),
+    );
 
     return {
-      data: integratedPosts,
+      data: postsWithLikes,
       total: totalCount,
       page,
       limit,
@@ -655,6 +677,11 @@ export class PostsService {
       throw new NotFoundException('Post not found');
     }
 
+    // 사용자가 좋아요를 눌렀는지 확인
+    const userLikedPost = await this.prisma.like.findFirst({
+      where: { user_id: post.user_id, post_id: id, deleted_at: null },
+    });
+
     let post_content = {};
     if (post.post_general) {
       post_content = {
@@ -680,6 +707,25 @@ export class PostsService {
       };
     }
 
+    // 각 댓글에 대해 사용자가 좋아요를 눌렀는지 확인
+    const commentsWithLikes = await Promise.all(
+      post.comment.map(async (comment) => {
+        const userLikedComment = await this.prisma.commentLike.findFirst({
+          where: {
+            user_id: comment.user_id,
+            comment_id: comment.comment_id,
+            deleted_at: null,
+          },
+        });
+
+        return {
+          ...comment,
+          user_liked: !!userLikedComment, // 사용자가 좋아요를 눌렀는지 여부
+          reply_count: comment._count.childComments,
+        };
+      }),
+    );
+
     const integratedPost = {
       post_id: post.post_id,
       user_id: post.user_id,
@@ -692,15 +738,13 @@ export class PostsService {
       status: post.status,
       views: post.views,
       likes: post.likes,
+      user_liked: !!userLikedPost, // 사용자가 좋아요를 눌렀는지 여부
       created_at: post.created_at,
       updated_at: post.updated_at,
       deleted_at: post.deleted_at,
       post_content,
       media: post.media,
-      comments: post.comment.map((comment) => ({
-        ...comment,
-        reply_count: comment._count.childComments,
-      })),
+      comments: commentsWithLikes, // 수정된 댓글 목록
       comment_count: post._count.comment,
     };
 
@@ -797,5 +841,14 @@ export class PostsService {
         },
       },
     });
+  }
+
+  private extractUserIdFromToken(authHeader: string): number {
+    if (!authHeader) {
+      throw new NotFoundException('User not found');
+    }
+    const token = authHeader.split(' ')[1];
+    const payload = this.jwtService.verify(token);
+    return payload.userId; // JWT에서 userId 추출
   }
 }

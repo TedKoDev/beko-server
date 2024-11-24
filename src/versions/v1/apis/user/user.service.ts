@@ -107,12 +107,36 @@ export class UserService {
     const user = await this.prisma.users.findUnique({
       where: { user_id: userId },
       include: {
-        post: true, // 실제 쿼리 포함 조건에 맞게 수정
-        comment: true, // 실제 쿼리 포함 조건에 맞게 수정
-        like: true, // 실제 쿼리 포함 조건에 맞게 수정
-        following: true,
-        followers: true,
-        social_login: true, // 소셜 로그인 정보 포함
+        post: {
+          where: {
+            deleted_at: null,
+          },
+        },
+        comment: {
+          where: {
+            deleted_at: null,
+          },
+        },
+        like: {
+          where: {
+            deleted_at: null,
+          },
+        },
+        following: {
+          where: {
+            deleted_at: null,
+          },
+        },
+        followers: {
+          where: {
+            deleted_at: null,
+          },
+        },
+        social_login: {
+          where: {
+            deleted_at: null,
+          },
+        },
       },
     });
 
@@ -120,14 +144,13 @@ export class UserService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    // 개수 계산
+    // deleted_at이 null인 항목만 카운트
     const postCount = user.post.length;
     const commentCount = user.comment.length;
     const likedPostsCount = user.like.length;
     const followingCount = user.following.length;
     const followersCount = user.followers.length;
 
-    // 데이터 반환
     return {
       user: {
         user_id: user.user_id,

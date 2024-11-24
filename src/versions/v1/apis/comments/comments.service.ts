@@ -95,8 +95,26 @@ export class CommentsService {
       }),
     ]);
 
+    // 각 댓글에 대해 사용자가 좋아요를 눌렀는지 확인
+    const commentsWithLikes = await Promise.all(
+      comments.map(async (comment) => {
+        const userLikedComment = await this.prisma.commentLike.findFirst({
+          where: {
+            user_id: comment.user_id,
+            comment_id: comment.comment_id,
+            deleted_at: null,
+          },
+        });
+
+        return {
+          ...comment,
+          user_liked: !!userLikedComment, // 사용자가 좋아요를 눌렀는지 여부
+        };
+      }),
+    );
+
     return {
-      data: comments,
+      data: commentsWithLikes,
       total: totalCount,
       page,
       limit,
@@ -135,7 +153,18 @@ export class CommentsService {
       throw new NotFoundException('Comment not found');
     }
 
-    return comment;
+    const userLikedComment = await this.prisma.commentLike.findFirst({
+      where: {
+        user_id: comment.user_id,
+        comment_id: comment.comment_id,
+        deleted_at: null,
+      },
+    });
+
+    return {
+      ...comment,
+      user_liked: !!userLikedComment, // 사용자가 좋아요를 눌렀는지 여부
+    };
   }
 
   async findReplies(commentId: number, paginationQuery: PaginationQueryDto) {

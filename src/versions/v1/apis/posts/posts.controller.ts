@@ -54,8 +54,12 @@ export class PostsController {
 
   @Auth(['ANY'])
   @Get()
-  async findAll(@Query() paginationQuery: PaginationQueryDto) {
-    return this.postsService.findAll(paginationQuery);
+  async findAll(
+    @Query() paginationQuery: PaginationQueryDto,
+    @Req() req: { headers: { authorization: string } },
+  ) {
+    const authHeader = req.headers.authorization;
+    return this.postsService.findAll(paginationQuery, authHeader);
   }
 
   @Auth(['ANY'])
