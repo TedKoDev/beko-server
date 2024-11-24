@@ -4,6 +4,7 @@ import { AdBannerModule } from './apis/ad-banner';
 import { AdminBlockModule } from './apis/admin-block';
 import { AuthModule } from './apis/auth';
 import { CommentsModule } from './apis/comments';
+import { CountryModule } from './apis/country/country.module';
 import { EmailModule } from './apis/email';
 import { FollowModule } from './apis/follow';
 import { LikesModule } from './apis/likes';
@@ -38,6 +39,7 @@ import { WordModule } from './apis/word';
     SlackModule, // Import the Slack module
     S3Module, // Import the S3 module
     LogsModule,
+    CountryModule,
   ],
 })
 export class V1Module {}
