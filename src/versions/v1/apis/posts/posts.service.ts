@@ -631,7 +631,7 @@ export class PostsService {
           where: {
             deleted_at: null,
           },
-          take: 5,
+          take: 10,
           include: {
             user: {
               select: {
