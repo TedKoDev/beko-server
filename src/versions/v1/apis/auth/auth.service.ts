@@ -7,6 +7,7 @@ import * as config from 'config';
 import { pbkdf2Sync } from 'crypto';
 import * as dayjs from 'dayjs';
 import { v4 as uuidv4 } from 'uuid';
+import { CountryService } from '../country/country.service';
 import { EmailService } from '../email';
 
 export const AUTH_SERVICE_TOKEN = 'AUTH_SERVICE_TOKEN';
@@ -17,6 +18,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService, // EmailService 주입
+    private readonly countryService: CountryService, // CountryService 주입
   ) {}
   // 구글 로그인
 
@@ -88,6 +90,10 @@ export class AuthService {
           change_reason: 'New user registration',
         },
       });
+
+      // 해당하는 country count +1 추가하기
+      // 국가 카운트 증가
+      await this.countryService.updateUserCount(country_id.toString(), true); // country_id를 문자열로 변환하여 사용
 
       return {
         message: '회원가입이 완료되었습니다. 이메일 인증 링크를 확인해주세요.',

@@ -498,7 +498,11 @@ export class PostsService {
         take: limit,
         orderBy,
         include: {
-          user: true,
+          user: {
+            include: {
+              country: true,
+            },
+          },
           post_general: true,
           post_column: true,
           post_question: true,
@@ -583,6 +587,11 @@ export class PostsService {
           username: post.user.username,
           user_profile_picture_url: post.user.profile_picture_url,
           user_level: post.user.level,
+          country_id: post.user.country_id,
+          country_code: post.user.country.country_code,
+          country_name: post.user.country.country_name,
+          country_flag_icon: post.user.country.flag_icon,
+          flag_icon: post.user.country.flag_icon,
           category_id: post.category_id,
           category_name: post.category?.category_name,
           type: post.type,
@@ -617,7 +626,11 @@ export class PostsService {
         deleted_at: null,
       },
       include: {
-        user: true,
+        user: {
+          include: {
+            country: true,
+          },
+        },
         post_general: true,
         post_column: true,
         post_question: true,
@@ -637,6 +650,11 @@ export class PostsService {
               select: {
                 user_id: true,
                 username: true,
+                country: {
+                  select: {
+                    flag_icon: true,
+                  },
+                },
                 profile_picture_url: true,
                 level: true,
               },
@@ -732,6 +750,10 @@ export class PostsService {
       username: post.user.username,
       user_profile_picture_url: post.user.profile_picture_url,
       user_level: post.user.level,
+      country_flag_icon: post.user.country.flag_icon,
+      country_id: post.user.country_id,
+      country_code: post.user.country.country_code,
+      country_name: post.user.country.country_name,
       category_id: post.category_id,
       category_name: post.category?.category_name,
       type: post.type,

@@ -12,7 +12,7 @@ INSERT INTO wordlist (word, part_of_speech, meaning_en, example_sentence, exampl
 ('영화', '명사', 'movie', '어제 영화를 봤어요.', 'I watched a movie yesterday.', 0, NOW()),
 ('음식', '명사', 'food', '한국 음식을 좋아해요.', 'I like Korean food.', 0, NOW()),
 ('컴퓨터', '명사', 'computer', '컴퓨터로 일해요.', 'I work on the computer.', 0, NOW()),
-('강의', '명사', 'lecture', '오늘 강의가 재미있었어요.', 'Today's lecture was interesting.', 0, NOW()),
+('강의', '명사', 'lecture', '오늘 강의가 재미있었어요.', 'Today s lecture was interesting.', 0, NOW()),
 ('교실', '명사', 'classroom', '교실이 조용합니다.', 'The classroom is quiet.', 0, NOW()),
 
 ('우주', '명사', 'universe', '우주는 끝이 없습니다.', 'The universe has no end.', 0, NOW()),
