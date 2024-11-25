@@ -137,6 +137,7 @@ export class UserService {
             deleted_at: null,
           },
         },
+        country: true,
       },
     });
 
@@ -144,7 +145,6 @@ export class UserService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    // deleted_at이 null인 항목만 카운트
     const postCount = user.post.length;
     const commentCount = user.comment.length;
     const likedPostsCount = user.like.length;
@@ -171,6 +171,14 @@ export class UserService {
         last_login_at: user.last_login_at,
         updated_at: user.updated_at,
         deleted_at: user.deleted_at,
+        country: user.country
+          ? {
+              country_id: user.country.country_id,
+              country_code: user.country.country_code,
+              country_name: user.country.country_name,
+              flag_icon: user.country.flag_icon,
+            }
+          : null,
         social_login: user.social_login.map((social) => ({
           social_login_id: social.social_login_id,
           user_id: social.user_id,
@@ -210,6 +218,7 @@ export class UserService {
         social_login: {
           where: { deleted_at: null },
         },
+        country: true,
       },
     });
 
@@ -230,6 +239,14 @@ export class UserService {
       account_status: user.account_status,
       created_at: user.created_at,
       last_login_at: user.last_login_at,
+      country: user.country
+        ? {
+            country_id: user.country.country_id,
+            country_code: user.country.country_code,
+            country_name: user.country.country_name,
+            flag_icon: user.country.flag_icon,
+          }
+        : null,
 
       stats: {
         postCount: user.post.length,

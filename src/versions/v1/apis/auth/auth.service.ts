@@ -21,8 +21,15 @@ export class AuthService {
   // 구글 로그인
 
   // 회원가입
-  async registerUser(email: string, password: string, name: string) {
+  async registerUser(
+    email: string,
+    password: string,
+    name: string,
+    country_id: number,
+  ) {
     try {
+      console.log('country_id', country_id);
+
       const existingEmailUser = await this.prisma.users.findUnique({
         where: { email },
       });
@@ -56,6 +63,7 @@ export class AuthService {
           is_email_verified: false,
           role: ROLE.USER,
           account_status: accountStatus.INACTIVE,
+          country_id: country_id,
         },
       });
 

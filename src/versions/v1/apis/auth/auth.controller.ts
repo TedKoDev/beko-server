@@ -41,8 +41,14 @@ export class AuthController {
   /** POST */
   @Post('register')
   async register(@Body() dto: RegisterUserDto) {
-    const { email, name, password } = dto;
-    const result = await this.authService.registerUser(email, password, name);
+    const { email, name, password, country_id } = dto;
+    console.log('country_id', country_id);
+    const result = await this.authService.registerUser(
+      email,
+      password,
+      name,
+      country_id,
+    );
 
     await this.slackService.sendMessage(
       '#알림봇테스트',

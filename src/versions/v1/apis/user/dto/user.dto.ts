@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
+import { CountryDTO } from './country.dto';
 
 export class SocialLoginDTO {
   @IsNumber()
@@ -46,6 +47,9 @@ export class UserDTO {
   @IsOptional()
   @IsString()
   bio?: string;
+
+  @IsOptional()
+  country?: CountryDTO;
 
   @IsString()
   encrypted_password: string;
