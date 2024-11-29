@@ -1,5 +1,5 @@
 import { LogType } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsNumber } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class GetLogCountDto {
   @IsNotEmpty()
@@ -13,4 +13,21 @@ export class LogCountResponseDto {
 
   @IsNumber()
   count: number;
+}
+
+export class YoutubeLinkResponseDto {
+  @IsNumber()
+  link_id: number;
+
+  @IsString()
+  link: string;
+
+  @IsString()
+  name: string;
+
+  @IsString()
+  topic: string;
+
+  @IsString()
+  created_at: Date;
 }

@@ -66,9 +66,8 @@ export class CommentsService {
         include: {
           media: true,
           user: {
-            select: {
-              username: true,
-              profile_picture_url: true,
+            include: {
+              country: true,
             },
           },
           childComments: {
@@ -351,5 +350,66 @@ export class CommentsService {
     });
 
     return { message: 'Answer selected successfully' };
+  }
+
+  async answerConsultation(teacherId: number, postId: number, content: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const consultation = await tx.post_consultation.findFirst({
+        where: {
+          post_id: postId,
+          status: 'PENDING',
+          deleted_at: null,
+        },
+        include: {
+          post: {
+            include: {
+              category: true,
+            },
+          },
+        },
+      });
+
+      if (!consultation) {
+        throw new NotFoundException(
+          'Consultation not found or already answered',
+        );
+      }
+
+      // 답변 생성
+      await tx.comment.create({
+        data: {
+          post_id: postId,
+          user_id: teacherId,
+          content: content,
+        },
+      });
+
+      // 상담 상태 업데이트
+      await tx.post_consultation.update({
+        where: { consultation_id: consultation.consultation_id },
+        data: {
+          teacher_id: teacherId,
+          status: 'COMPLETED',
+          completed_at: new Date(),
+        },
+      });
+
+      // 선생님에게 포인트 지급
+      await tx.users.update({
+        where: { user_id: teacherId },
+        data: { points: { increment: consultation.price } },
+      });
+
+      // 포인트 내역 추가
+      await tx.point.create({
+        data: {
+          user_id: teacherId,
+          points_change: consultation.price,
+          change_reason: 'Consultation answered',
+        },
+      });
+
+      return { message: 'Consultation answered successfully' };
+    });
   }
 }

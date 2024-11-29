@@ -22,7 +22,7 @@ export class UserService {
     updateData: {
       username: string;
       bio: string;
-      profilePictureUrl?: string;
+      profile_picture_url?: string;
     },
   ) {
     // 중복된 username 확인
@@ -42,7 +42,7 @@ export class UserService {
       data: {
         username: finalUsername,
         bio: updateData.bio,
-        profile_picture_url: updateData.profilePictureUrl,
+        profile_picture_url: updateData.profile_picture_url,
         updated_at: new Date(),
       },
     });

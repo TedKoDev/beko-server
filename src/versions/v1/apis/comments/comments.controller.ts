@@ -87,4 +87,19 @@ export class CommentsController {
     const userId = req.user.userId;
     return await this.commentsService.selectCommentAsAnswer(+id, userId);
   }
+
+  @Auth(['ANY', 'ADMIN'])
+  @Post('consultation/:postId/answer')
+  async answerConsultation(
+    @Param('postId') postId: string,
+    @Body() answerDto: { content: string },
+    @Req() req: { user: { userId: number } },
+  ) {
+    const teacherId = req.user.userId;
+    return await this.commentsService.answerConsultation(
+      teacherId,
+      +postId,
+      answerDto.content,
+    );
+  }
 }

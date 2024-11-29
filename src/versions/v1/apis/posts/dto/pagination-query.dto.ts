@@ -1,7 +1,7 @@
 // src/posts/dto/pagination-query.dto.ts
 
 import { postType } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional } from 'class-validator';
 
 export class PaginationQueryDto {
   @IsInt()
@@ -18,4 +18,16 @@ export class PaginationQueryDto {
 
   @IsOptional()
   sort?: 'latest' | 'oldest' | 'popular';
+
+  @IsBoolean()
+  @IsOptional()
+  admin_pick?: boolean;
+
+  @IsInt()
+  @IsOptional()
+  topic_id?: number;
+
+  @IsInt()
+  @IsOptional()
+  category_id?: number;
 }

@@ -45,7 +45,7 @@ export class UserController {
     const updatedUser = await this.userService.updateUser(dto.userId, {
       username: dto.username,
       bio: dto.bio,
-      profilePictureUrl: dto.profilePictureUrl,
+      profile_picture_url: dto.profile_picture_url,
     });
     return res.status(200).json(updatedUser);
   }

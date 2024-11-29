@@ -93,7 +93,7 @@ export class AuthService {
 
       // 해당하는 country count +1 추가하기
       // 국가 카운트 증가
-      await this.countryService.updateUserCount(country_id.toString(), true); // country_id를 문자열로 변환하여 사용
+      await this.countryService.updateUserCount(country_id, true); // country_id를 문자열로 변환하여 사용
 
       return {
         message: '회원가입이 완료되었습니다. 이메일 인증 링크를 확인해주세요.',

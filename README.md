@@ -46,3 +46,7 @@ pnpm add @nestjs/passport passport passport-google-oauth20
 
 pnpm add node-cron
 pnpm add -D @types/node-cron
+
+# Prisma를 사용한 데이터 리셋
+
+npx prisma migrate reset --schema=prisma/postsql.prisma --force

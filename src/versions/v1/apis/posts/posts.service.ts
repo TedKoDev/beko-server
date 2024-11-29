@@ -148,14 +148,25 @@ export class PostsService {
           }
           break;
         case postType.CONSULTATION:
+          // 카테고리의 base_price 조회
+          const category = await tx.category.findFirst({
+            where: {
+              category_id: createPostDto.categoryId,
+              deleted_at: null,
+            },
+          });
+
+          if (!category) {
+            throw new BadRequestException('Invalid category');
+          }
+
           await tx.post_consultation.create({
             data: {
               post_id: post.post_id,
               student_id: userId,
               title: createPostDto.title || '',
               content: createPostDto.content,
-              base_price: createPostDto.basePrice || 0,
-              is_private: createPostDto.isPrivate ?? true,
+              price: category.base_price,
               status: 'PENDING',
             },
           });
@@ -353,7 +364,7 @@ export class PostsService {
             data: {
               title: updatePostDto.title,
               content: updatePostDto.content,
-              base_price: updatePostDto.basePrice,
+              price: updatePostDto.price,
               status: updatePostDto.consultationStatus,
               is_private: updatePostDto.isPrivate,
               teacher_id: updatePostDto.teacherId,
@@ -471,7 +482,16 @@ export class PostsService {
   // 게시글 목록 조회 (페이지네이션 적용)
   async findAll(paginationQuery: PaginationQueryDto, authHeader: string) {
     const userId = this.extractUserIdFromToken(authHeader);
-    const { page = 1, limit = 10, type, sort = 'latest' } = paginationQuery;
+    const {
+      page = 1,
+      limit = 10,
+      type,
+      sort = 'latest',
+      admin_pick = false,
+      topic_id,
+      category_id,
+    } = paginationQuery;
+
     const skip = (page - 1) * limit;
 
     const where: Prisma.postWhereInput = {
@@ -481,6 +501,22 @@ export class PostsService {
 
     if (type) {
       where.type = type;
+    }
+
+    if (admin_pick) {
+      where.admin_pick = admin_pick;
+    }
+
+    // 카테고리 ID로 필터링
+    if (category_id) {
+      where.category_id = category_id;
+    }
+
+    // 토픽 ID로 필터링
+    if (topic_id) {
+      where.category = {
+        topic_id: topic_id,
+      };
     }
 
     const orderBy: Prisma.postOrderByWithRelationInput[] = [];
@@ -513,7 +549,7 @@ export class PostsService {
             where: {
               deleted_at: null,
             },
-            take: 3, // 최대 3개의 댓글만 가져오기
+            take: 3,
           },
           _count: {
             select: {
@@ -524,7 +560,7 @@ export class PostsService {
               },
             },
           },
-          category: true, // Include category details
+          category: true,
         },
       }),
       this.prisma.post.count({
@@ -537,7 +573,7 @@ export class PostsService {
       posts.sort((a, b) => b.likes * 2 + b.views - (a.likes * 2 + a.views));
     }
 
-    // 각 게시글에 대해 사용자가 좋아요를 눌렀는지 확인
+    // 각 게시글에 대해 사용자가 좋아를 눌렀는지 확인
     const postsWithLikes = await Promise.all(
       posts.map(async (post) => {
         const userLikedPost = await this.prisma.like.findFirst({
@@ -572,7 +608,7 @@ export class PostsService {
           post_content = {
             title: post.post_consultation.title,
             content: post.post_consultation.content,
-            base_price: post.post_consultation.base_price,
+            price: post.post_consultation.price,
             status: post.post_consultation.status,
             is_private: post.post_consultation.is_private,
             student_id: post.post_consultation.student_id,
@@ -859,6 +895,7 @@ export class PostsService {
           select: {
             category_id: true,
             category_name: true,
+            base_price: true,
           },
         },
       },
@@ -872,5 +909,31 @@ export class PostsService {
     const token = authHeader.split(' ')[1];
     const payload = this.jwtService.verify(token);
     return payload.userId; // JWT에서 userId 추출
+  }
+
+  // 관리자 추천 게시글 설정/해제
+  async toggleAdminPick(postId: number, userId: number) {
+    // 관리자 권한 확인
+    const user = await this.prisma.users.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (user.role !== 'ADMIN') {
+      throw new ForbiddenException('Admin permission required');
+    }
+
+    const post = await this.prisma.post.findUnique({
+      where: { post_id: postId },
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    // admin_pick 상태 토글
+    return this.prisma.post.update({
+      where: { post_id: postId },
+      data: { admin_pick: !post.admin_pick },
+    });
   }
 }

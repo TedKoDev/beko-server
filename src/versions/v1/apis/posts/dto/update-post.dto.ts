@@ -63,7 +63,7 @@ export class UpdatePostDto {
 
   @IsOptional()
   @IsNumber()
-  basePrice?: number;
+  price?: number;
 
   @IsOptional()
   @IsDate()

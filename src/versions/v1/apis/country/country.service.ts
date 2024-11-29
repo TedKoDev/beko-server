@@ -48,12 +48,24 @@ export class CountryService {
   }
 
   // 국가별 사용자 수 업데이트
-  async updateUserCount(countryCode: string, increment: boolean) {
+  async updateUserCount(countryId: number, increment: boolean) {
+    const country = await this.prisma.country.findUnique({
+      where: {
+        country_id: countryId,
+      },
+    });
+
+    if (!country) {
+      throw new NotFoundException(`Country with ID ${countryId} not found`);
+    }
+
     return this.prisma.country.update({
-      where: { country_code: countryCode },
+      where: {
+        country_id: countryId,
+      },
       data: {
         user_count: {
-          [increment ? 'increment' : 'decrement']: 1,
+          increment: increment ? 1 : -1,
         },
       },
     });

@@ -13,4 +13,14 @@ export class LogsController {
   async getLogCount(@Query() dto: GetLogCountDto) {
     return this.logsService.getLogCount(dto.type);
   }
+
+  @Get('youtube/random')
+  async getRandomYoutubeLink() {
+    return this.logsService.getRandomYoutubeLink();
+  }
+
+  @Get('youtube/all')
+  async getAllYoutubeLinks() {
+    return this.logsService.getAllYoutubeLinks();
+  }
 }
