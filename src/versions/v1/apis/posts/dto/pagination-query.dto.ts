@@ -1,7 +1,7 @@
 // src/posts/dto/pagination-query.dto.ts
 
 import { postType } from '@prisma/client';
-import { IsBoolean, IsEnum, IsInt, IsOptional } from 'class-validator';
+import { IsBoolean, IsDate, IsEnum, IsInt, IsOptional } from 'class-validator';
 
 export class PaginationQueryDto {
   @IsInt()
@@ -30,4 +30,32 @@ export class PaginationQueryDto {
   @IsInt()
   @IsOptional()
   category_id?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  is_private?: boolean;
+
+  @IsInt()
+  @IsOptional()
+  student_id?: number;
+
+  @IsInt()
+  @IsOptional()
+  teacher_id?: number;
+
+  @IsDate()
+  @IsOptional()
+  completed_at?: Date;
+
+  @IsBoolean()
+  @IsOptional()
+  is_answered?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  is_deleted?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  is_draft?: boolean;
 }

@@ -3,6 +3,7 @@ import { postStatus, postType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsDate,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -53,4 +54,28 @@ export class CreatePostDto {
   @IsOptional()
   @IsBoolean()
   isPrivate?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  studentId?: number;
+
+  @IsOptional()
+  @IsInt()
+  teacherId?: number;
+
+  @IsOptional()
+  @IsDate()
+  completedAt?: Date;
+
+  @IsOptional()
+  @IsBoolean()
+  isAnswered?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isDeleted?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isDraft?: boolean;
 }

@@ -25,34 +25,63 @@ export class PostsService {
   // 게시글 생성
   async create(userId: number, createPostDto: CreatePostDto, isDraft = false) {
     return this.prisma.$transaction(async (tx) => {
-      // 질문 타입일 경우 포인트 체크
-      if (createPostDto.type === postType.QUESTION && !isDraft) {
+      // 질문 또는 상담 타입일 경우 포인트 체크
+      if (
+        (createPostDto.type === postType.QUESTION ||
+          createPostDto.type === postType.CONSULTATION) &&
+        !isDraft
+      ) {
         const user = await tx.users.findUnique({
           where: { user_id: userId },
         });
 
         if (!user) {
-          throw new NotFoundException('User not found');
+          throw new NotFoundException('사용자를 찾을 수 없습니다');
         }
 
-        if (user.points < createPostDto.points) {
-          throw new BadRequestException('Not enough points');
+        // 차감할 포인트 계산
+        let requiredPoints = 0;
+        if (createPostDto.type === postType.QUESTION) {
+          requiredPoints = createPostDto.points;
+          if (!requiredPoints) {
+            throw new BadRequestException('질문 포인트를 입력해주세요');
+          }
+        } else if (createPostDto.type === postType.CONSULTATION) {
+          console.log('createPostDto.basePrice', createPostDto.basePrice);
+          requiredPoints = createPostDto.basePrice;
+          if (!requiredPoints) {
+            throw new BadRequestException('상담 가격을 입력해주세요');
+          }
+        }
+
+        console.log('Required Points:', requiredPoints); // 디버깅용
+
+        if (user.points < requiredPoints) {
+          throw new BadRequestException('포인트가 부족합니다');
         }
 
         // 포인트 차감
         await tx.users.update({
           where: { user_id: userId },
-          data: { points: { decrement: createPostDto.points } },
+          data: {
+            points: { decrement: requiredPoints },
+          },
         });
 
         // 포인트 내역 추가
         await tx.point.create({
           data: {
             user_id: userId,
-            points_change: -createPostDto.points,
-            change_reason: 'Question post created',
+            points_change: -requiredPoints,
+            change_reason:
+              createPostDto.type === postType.QUESTION ||
+              createPostDto.type === postType.CONSULTATION
+                ? '질문 게시글 작성'
+                : '상담 게시글 작성',
           },
         });
+
+        console.log('Points updated and recorded'); // 디버깅용
       }
 
       const postCreateInput: Prisma.postCreateInput = {
@@ -148,26 +177,15 @@ export class PostsService {
           }
           break;
         case postType.CONSULTATION:
-          // 카테고리의 base_price 조회
-          const category = await tx.category.findFirst({
-            where: {
-              category_id: createPostDto.categoryId,
-              deleted_at: null,
-            },
-          });
-
-          if (!category) {
-            throw new BadRequestException('Invalid category');
-          }
-
           await tx.post_consultation.create({
             data: {
               post_id: post.post_id,
-              student_id: userId,
               title: createPostDto.title || '',
               content: createPostDto.content,
-              price: category.base_price,
+              price: createPostDto.basePrice,
               status: 'PENDING',
+              is_private: createPostDto.isPrivate || false,
+              student_id: userId,
             },
           });
           break;
@@ -406,39 +424,50 @@ export class PostsService {
   async remove(postId: number, userId: number, userRole: string) {
     const post = await this.prisma.post.findUnique({
       where: { post_id: postId },
-      include: { post_question: true, comment: true },
+      include: {
+        post_question: true,
+        post_consultation: true,
+        comment: true,
+      },
     });
 
     if (!post) {
       throw new NotFoundException('Post not found');
     }
 
-    if (post.post_question && !post.post_question.isAnswered) {
+    // 질문이나 상담 게시글의 경우 답변/완료 전에는 삭제 불가
+    if (
+      (post.post_question && !post.post_question.isAnswered) ||
+      (post.post_consultation && post.post_consultation.status !== 'COMPLETED')
+    ) {
       throw new BadRequestException(
-        'Cannot delete a question post before an answer is selected',
+        '답변이나 상담이 완료되기 전에는 삭제할 수 없습니다',
       );
     }
 
     if (userRole !== 'ADMIN' && post.user_id !== userId) {
-      throw new ForbiddenException(
-        'You are not authorized to delete this post',
-      );
+      throw new ForbiddenException('이 게시글을 삭제할 권한이 없습니다');
     }
 
-    // 포인트 반환 로직 추가 (질문 유형인 경우)
-    if (post.post_question) {
+    // 포인트 반환 로직
+    if (post.post_question || post.post_consultation) {
+      const returnPoints = post.post_question
+        ? post.post_question.points
+        : post.post_consultation.price;
+
       await this.prisma.users.update({
         where: { user_id: post.user_id },
-        data: { points: { increment: post.post_question.points } },
+        data: { points: { increment: returnPoints } },
       });
 
       await this.pointsService.create(post.user_id, {
-        pointsChange: post.post_question.points,
-        changeReason: 'Question post deleted',
+        pointsChange: returnPoints,
+        changeReason: post.post_question
+          ? '질문 게시글 삭제로 인한 포인트 반환'
+          : '상담 게시글 삭제로 인한 포인트 반환',
       });
     }
 
-    // 게시글 상태와 삭제 날짜 업데이트
     return this.prisma.post.update({
       where: { post_id: postId },
       data: {
@@ -526,7 +555,7 @@ export class PostsService {
       orderBy.push({ created_at: 'asc' });
     }
 
-    // Prisma에서 게시글을 가져옴
+    // Prisma에서 게시글을 져옴
     const [posts, totalCount] = await Promise.all([
       this.prisma.post.findMany({
         where,
@@ -671,6 +700,7 @@ export class PostsService {
         post_column: true,
         post_question: true,
         post_sentence: true,
+        post_consultation: true,
         media: {
           where: {
             deleted_at: null,
@@ -758,6 +788,17 @@ export class PostsService {
       post_content = {
         title: post.post_sentence.title,
         content: post.post_sentence.content,
+      };
+    } else if (post.post_consultation) {
+      post_content = {
+        title: post.post_consultation.title,
+        content: post.post_consultation.content,
+        price: post.post_consultation.price,
+        status: post.post_consultation.status,
+        is_private: post.post_consultation.is_private,
+        student_id: post.post_consultation.student_id,
+        teacher_id: post.post_consultation.teacher_id,
+        completed_at: post.post_consultation.completed_at,
       };
     }
 
