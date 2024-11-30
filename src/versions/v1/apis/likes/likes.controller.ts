@@ -23,7 +23,31 @@ export class LikesController {
     @Param('commentId') commentId: number,
     @Req() req: { user: { userId: number } },
   ) {
-    const userId = req.user.userId;
-    return this.likesService.toggleCommentLike(userId, commentId);
+    try {
+      console.log('[Toggle Comment Like] Request:', {
+        commentId,
+        userId: req.user.userId,
+      });
+
+      const result = await this.likesService.toggleCommentLike(
+        req.user.userId,
+        commentId,
+      );
+
+      console.log('[Toggle Comment Like] Response:', {
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString(),
+      });
+
+      return result;
+    } catch (error) {
+      console.error('[Toggle Comment Like] Error:', {
+        error: error.message,
+        commentId,
+        userId: req.user.userId,
+      });
+      throw error;
+    }
   }
 }

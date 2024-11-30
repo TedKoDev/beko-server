@@ -39,11 +39,3 @@ INSERT INTO public."category" (topic_id, category_name, created_at, updated_at, 
 ((SELECT topic_id FROM public."topic" WHERE title = '학습 자료'), '온라인강의', NOW(), NULL, NULL),
 ((SELECT topic_id FROM public."topic" WHERE title = '학습 자료'), '시험정보', NOW(), NULL, NULL),
 ((SELECT topic_id FROM public."topic" WHERE title = '학습 자료'), '학습팁', NOW(), NULL, NULL);
-
--- 질문과 답변 카테고리
-INSERT INTO public."category" (topic_id, category_name, created_at, updated_at, deleted_at) VALUES
-((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '문법질문', NOW(), NULL, NULL),
-((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '번역요청', NOW(), NULL, NULL),
-((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '발음교정', NOW(), NULL, NULL),
-((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '어휘질문', NOW(), NULL, NULL),
-((SELECT topic_id FROM public."topic" WHERE title = '질문과 답변'), '일상회화', NOW(), NULL, NULL);

@@ -47,9 +47,23 @@ export class CommentsService {
     return comment;
   }
 
-  async findAll(paginationQuery: PaginationQueryDto) {
+  async findAll(paginationQuery: PaginationQueryDto, currentUserId: number) {
     const { page = 1, limit = 10, sort = 'latest', postId } = paginationQuery;
     const skip = (page - 1) * limit;
+
+    // 포스트 정보 조회 추가
+    const post = await this.prisma.post.findUnique({
+      where: { post_id: postId },
+      select: {
+        post_id: true,
+        user_id: true,
+        type: true,
+      },
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
 
     const orderBy = [];
     if (sort === 'latest') {
@@ -94,12 +108,11 @@ export class CommentsService {
       }),
     ]);
 
-    // 각 댓글에 대해 사용자가 좋아요를 눌렀는지 확인
     const commentsWithLikes = await Promise.all(
       comments.map(async (comment) => {
         const userLikedComment = await this.prisma.commentLike.findFirst({
           where: {
-            user_id: comment.user_id,
+            user_id: currentUserId,
             comment_id: comment.comment_id,
             deleted_at: null,
           },
@@ -107,12 +120,20 @@ export class CommentsService {
 
         return {
           ...comment,
-          user_liked: !!userLikedComment, // 사용자가 좋아요를 눌렀는지 여부
+          user_liked: !!userLikedComment,
+          likes_count: await this.prisma.commentLike.count({
+            where: {
+              comment_id: comment.comment_id,
+              deleted_at: null,
+            },
+          }),
         };
       }),
     );
 
     return {
+      post_user_id: post.user_id,
+      post_type: post.type,
       data: commentsWithLikes,
       total: totalCount,
       page,
@@ -120,7 +141,7 @@ export class CommentsService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, currentUserId: number) {
     const comment = await this.prisma.comment.findUnique({
       where: { comment_id: id, deleted_at: null },
       include: {
@@ -154,7 +175,7 @@ export class CommentsService {
 
     const userLikedComment = await this.prisma.commentLike.findFirst({
       where: {
-        user_id: comment.user_id,
+        user_id: currentUserId,
         comment_id: comment.comment_id,
         deleted_at: null,
       },
@@ -162,7 +183,7 @@ export class CommentsService {
 
     return {
       ...comment,
-      user_liked: !!userLikedComment, // 사용자가 좋아요를 눌렀는지 여부
+      user_liked: !!userLikedComment,
     };
   }
 
@@ -352,7 +373,12 @@ export class CommentsService {
     return { message: 'Answer selected successfully' };
   }
 
-  async answerConsultation(teacherId: number, postId: number, content: string) {
+  async answerConsultation(
+    teacherId: number,
+    postId: number,
+    content: string,
+    commentId: number,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       const consultation = await tx.post_consultation.findFirst({
         where: {
@@ -375,12 +401,22 @@ export class CommentsService {
         );
       }
 
-      // 답변 생성
-      await tx.comment.create({
+      // 기존 댓글이 있는지 확인
+      const existingComment = await tx.comment.findUnique({
+        where: { comment_id: commentId },
+      });
+
+      if (!existingComment) {
+        throw new NotFoundException('Comment not found');
+      }
+
+      // 댓글 업데이트만 수행
+      await tx.comment.update({
+        where: { comment_id: commentId },
         data: {
-          post_id: postId,
-          user_id: teacherId,
           content: content,
+          isSelected: true,
+          updated_at: new Date(),
         },
       });
 

@@ -43,7 +43,7 @@ export class AuthService {
         );
       }
 
-      const emailVerificationToken = uuidv4();
+      // const emailVerificationToken = uuidv4();
       const encryptedPassword = this._encryptPassword(password);
 
       let finalUsername = name;
@@ -61,14 +61,19 @@ export class AuthService {
           email,
           encrypted_password: encryptedPassword,
           username: finalUsername,
-          email_verification_token: emailVerificationToken,
-          is_email_verified: false,
+          // email_verification_token: emailVerificationToken,
+          email_verification_token: null,
+          // is_email_verified: false,
+          is_email_verified: true,
           role: ROLE.USER,
-          account_status: accountStatus.INACTIVE,
+          // account_status: accountStatus.INACTIVE,
+          account_status: accountStatus.ACTIVE,
           country_id: country_id,
         },
       });
 
+      // 이메일 인증 부분 주석 처리
+      /*
       try {
         await this.emailService.sendUserConfirmation(
           email,
@@ -82,7 +87,9 @@ export class AuthService {
           HttpStatus.SERVICE_UNAVAILABLE,
         );
       }
+      */
 
+      // 이메일 인증 없이 바로 처리된 것으로 간주
       await this.prisma.point.create({
         data: {
           user_id: user.user_id,
@@ -96,7 +103,7 @@ export class AuthService {
       await this.countryService.updateUserCount(country_id, true); // country_id를 문자열로 변환하여 사용
 
       return {
-        message: '회원가입이 완료되었습니다. 이메일 인증 링크를 확인해주세요.',
+        message: '회원가입이 완료되었습니다.',
         username: finalUsername,
       };
     } catch (error) {

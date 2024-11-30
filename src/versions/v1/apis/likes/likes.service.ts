@@ -45,11 +45,14 @@ export class LikesService {
   }
 
   async toggleCommentLike(userId: number, commentId: number) {
+    console.log('toggleCommentLike', commentId);
+    console.log('userId', userId);
     const existingLike = await this.prisma.commentLike.findFirst({
       where: { user_id: userId, comment_id: commentId },
     });
 
     if (existingLike) {
+      console.log('existingLike', existingLike);
       if (existingLike.deleted_at) {
         await this.prisma.commentLike.update({
           where: { comment_like_id: existingLike.comment_like_id },
@@ -70,12 +73,14 @@ export class LikesService {
         });
       }
     } else {
+      console.log('else');
       await this.prisma.commentLike.create({
         data: {
           user_id: userId,
           comment_id: commentId,
         },
       });
+
       return this.prisma.comment.update({
         where: { comment_id: commentId },
         data: { likes: { increment: 1 } },
