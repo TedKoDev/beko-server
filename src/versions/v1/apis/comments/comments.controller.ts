@@ -35,14 +35,22 @@ export class CommentsController {
 
   @Auth(['ANY'])
   @Get()
-  async findAll(@Query() paginationQuery: PaginationQueryDto) {
-    return await this.commentsService.findAll(paginationQuery);
+  async findAll(
+    @Query() paginationQuery: PaginationQueryDto,
+    @Req() req: { user: { userId: number } },
+  ) {
+    const userId = req.user.userId;
+    return await this.commentsService.findAll(paginationQuery, userId);
   }
 
   @Auth(['ANY'])
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return await this.commentsService.findOne(+id);
+  async findOne(
+    @Param('id') id: string,
+    @Req() req: { user: { userId: number } },
+  ) {
+    const userId = req.user.userId;
+    return await this.commentsService.findOne(+id, userId);
   }
 
   @Auth(['ANY'])
@@ -84,6 +92,7 @@ export class CommentsController {
     @Param('id') id: string,
     @Req() req: { user: { userId: number } },
   ) {
+    console.log('selectAsAnswer', id);
     const userId = req.user.userId;
     return await this.commentsService.selectCommentAsAnswer(+id, userId);
   }
@@ -92,7 +101,7 @@ export class CommentsController {
   @Post('consultation/:postId/answer')
   async answerConsultation(
     @Param('postId') postId: string,
-    @Body() answerDto: { content: string },
+    @Body() answerDto: { content: string; commentId: number },
     @Req() req: { user: { userId: number } },
   ) {
     const teacherId = req.user.userId;
@@ -100,6 +109,7 @@ export class CommentsController {
       teacherId,
       +postId,
       answerDto.content,
+      answerDto.commentId,
     );
   }
 }

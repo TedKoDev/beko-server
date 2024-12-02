@@ -1,6 +1,6 @@
 // src/posts/dto/pagination-query.dto.ts
 
-import { postType } from '@prisma/client';
+import { consultationStatus, postType } from '@prisma/client';
 import { IsBoolean, IsDate, IsEnum, IsInt, IsOptional } from 'class-validator';
 
 export class PaginationQueryDto {
@@ -58,4 +58,8 @@ export class PaginationQueryDto {
   @IsBoolean()
   @IsOptional()
   is_draft?: boolean;
+
+  @IsEnum(consultationStatus)
+  @IsOptional()
+  status?: consultationStatus;
 }

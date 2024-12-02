@@ -56,8 +56,11 @@ export class PostsController {
   @Get()
   async findAll(
     @Query() paginationQuery: PaginationQueryDto,
-    @Req() req: { headers: { authorization: string } },
+
+    @Req()
+    req: { headers: { authorization: string }; user: { userId: number } },
   ) {
+    console.log(paginationQuery);
     const authHeader = req.headers.authorization;
     return this.postsService.findAll(paginationQuery, authHeader);
   }
@@ -69,10 +72,37 @@ export class PostsController {
   }
 
   @Auth(['ANY'])
+  @Get('consultations')
+  async findAllConsultations(
+    @Query() paginationQuery: PaginationQueryDto,
+    @Req() req: { user: { userId: number; role: string } },
+  ) {
+    const { userId, role } = req.user;
+    return this.postsService.findAllConsultations(
+      paginationQuery,
+      userId,
+      role,
+    );
+  }
+
+  @Auth(['ANY'])
+  @Get('consultations/:id')
+  async findOneConsultation(
+    @Param('id') id: number,
+    @Req() req: { user: { userId: number; role: string } },
+  ) {
+    const { userId, role } = req.user;
+    return this.postsService.findOneConsultation(id, userId, role);
+  }
+
+  @Auth(['ANY'])
   @Get(':id')
-  async findOne(@Param('id') id: number) {
+  async findOne(
+    @Param('id') id: number,
+    @Req() req: { user: { userId: number } },
+  ) {
     await this.postsService.incrementViewCount(id);
-    return this.postsService.findOne(id);
+    return this.postsService.findOne(id, req.user.userId);
   }
 
   @Auth(['ANY'])

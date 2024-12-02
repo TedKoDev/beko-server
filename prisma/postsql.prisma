@@ -149,7 +149,9 @@ model point {
   created_at    DateTime  @default(now()) @db.Timestamp
   updated_at    DateTime? @db.Timestamp
   deleted_at    DateTime? @db.Timestamp
+  post_id       Int?      // 관련 게시글 ID (nullable)
   user          users     @relation(fields: [user_id], references: [user_id])
+  post          post?     @relation(fields: [post_id], references: [post_id])  // post와의 관계 설정
 }
 
 model topic {
@@ -201,7 +203,7 @@ model picturewordquestion {
   question_id  Int       @id @default(autoincrement())
   image_url    String    @db.VarChar(255)  // 이미지 파일 경로나 URL
   level        Int       // 난이도 레벨
-  answer       String    @db.VarChar(100)  // 정답 단어
+  answer       String    @db.VarChar(100)  // 정답 단���
   option1      String    @db.VarChar(100)  // 보기 1
   option2      String    @db.VarChar(100)  // 보기 2
   created_at   DateTime  @default(now()) @db.Timestamp
@@ -290,6 +292,7 @@ model post {
   post_question post_question?
   post_sentence post_sentence?
   post_consultation post_consultation?
+  points       point[]   // point와의 관계 추가
 }
 
 model post_general {
