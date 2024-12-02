@@ -25,6 +25,19 @@ export class PostsService {
   // 게시글 생성
   async create(userId: number, createPostDto: CreatePostDto, isDraft = false) {
     return this.prisma.$transaction(async (tx) => {
+      // postCreateInput 먼저 선언
+      const postCreateInput: Prisma.postCreateInput = {
+        type: createPostDto.type,
+        status: isDraft ? 'DRAFT' : 'PUBLIC',
+        user: { connect: { user_id: userId } },
+        ...(createPostDto.categoryId && {
+          category: { connect: { category_id: createPostDto.categoryId } },
+        }),
+      };
+
+      // 먼저 post 생성
+      const post = await tx.post.create({ data: postCreateInput });
+
       // 질문 또는 상담 타입일 경우 포인트 체크
       if (
         (createPostDto.type === postType.QUESTION ||
@@ -47,14 +60,11 @@ export class PostsService {
             throw new BadRequestException('질문 포인트를 입력해주세요');
           }
         } else if (createPostDto.type === postType.CONSULTATION) {
-          console.log('createPostDto.basePrice', createPostDto.basePrice);
           requiredPoints = createPostDto.basePrice;
           if (!requiredPoints) {
             throw new BadRequestException('상담 가격을 입력해주세요');
           }
         }
-
-        console.log('Required Points:', requiredPoints); // 디버깅용
 
         if (user.points < requiredPoints) {
           throw new BadRequestException('포인트가 부족합니다');
@@ -74,26 +84,13 @@ export class PostsService {
             user_id: userId,
             points_change: -requiredPoints,
             change_reason:
-              createPostDto.type === postType.QUESTION ||
-              createPostDto.type === postType.CONSULTATION
+              createPostDto.type === postType.QUESTION
                 ? '질문 게시글 작성'
                 : '상담 게시글 작성',
+            post_id: post.post_id,
           },
         });
-
-        console.log('Points updated and recorded'); // 디버깅용
       }
-
-      const postCreateInput: Prisma.postCreateInput = {
-        type: createPostDto.type,
-        status: isDraft ? 'DRAFT' : 'PUBLIC',
-        user: { connect: { user_id: userId } },
-        ...(createPostDto.categoryId && {
-          category: { connect: { category_id: createPostDto.categoryId } },
-        }),
-      };
-
-      const post = await tx.post.create({ data: postCreateInput });
 
       // 미디어 데이터 저장
       if (createPostDto.media && createPostDto.media.length > 0) {
@@ -285,7 +282,11 @@ export class PostsService {
           user_id: userId,
           deleted_at: null,
         },
-        include: { media: true },
+        include: {
+          media: true,
+          post_question: true,
+          post_consultation: true,
+        },
       });
 
       if (!post) {
@@ -357,6 +358,30 @@ export class PostsService {
           });
           break;
         case 'QUESTION':
+          if (
+            updatePostDto.points &&
+            post.post_question?.points !== updatePostDto.points
+          ) {
+            const pointDifference =
+              updatePostDto.points - post.post_question.points;
+
+            // 사자 포인트 업데이트
+            await tx.users.update({
+              where: { user_id: userId },
+              data: { points: { increment: -pointDifference } },
+            });
+
+            // 포인트 이력 추가
+            await tx.point.create({
+              data: {
+                user_id: userId,
+                points_change: -pointDifference,
+                change_reason: '질문 게시글 포인트 수정',
+                post_id: postId,
+              },
+            });
+          }
+
           await tx.post_question.update({
             where: { post_id: postId },
             data: {
@@ -377,6 +402,48 @@ export class PostsService {
           });
           break;
         case 'CONSULTATION':
+          // 카테고리가 변경된 경우 기본 가격 확인
+          if (
+            updatePostDto.categoryId &&
+            updatePostDto.categoryId !== post.category_id
+          ) {
+            const newCategory = await tx.category.findUnique({
+              where: { category_id: updatePostDto.categoryId },
+            });
+
+            if (!newCategory) {
+              throw new BadRequestException('카테고리를 찾을 수 없습니다.');
+            }
+
+            // 새로운 카테고리의 기본 가격으로 업데이트
+            updatePostDto.price = newCategory.base_price;
+          }
+
+          // 가격이 변경된 경우
+          if (
+            updatePostDto.price &&
+            post.post_consultation?.price !== updatePostDto.price
+          ) {
+            const priceDifference =
+              updatePostDto.price - post.post_consultation.price;
+
+            // 사용자 포인트 업데이트
+            await tx.users.update({
+              where: { user_id: userId },
+              data: { points: { increment: -priceDifference } },
+            });
+
+            // 포인트 이력 추가
+            await tx.point.create({
+              data: {
+                user_id: userId,
+                points_change: -priceDifference,
+                change_reason: '상담 게시글 가격 수정',
+                post_id: postId,
+              },
+            });
+          }
+
           await tx.post_consultation.update({
             where: { post_id: postId },
             data: {
@@ -422,58 +489,76 @@ export class PostsService {
 
   // 게시글 삭제
   async remove(postId: number, userId: number, userRole: string) {
-    const post = await this.prisma.post.findUnique({
-      where: { post_id: postId },
-      include: {
-        post_question: true,
-        post_consultation: true,
-        comment: true,
-      },
-    });
-
-    if (!post) {
-      throw new NotFoundException('Post not found');
-    }
-
-    // 질문이나 상담 게시글의 경우 답변/완료 전에는 삭제 불가
-    if (
-      (post.post_question && !post.post_question.isAnswered) ||
-      (post.post_consultation && post.post_consultation.status !== 'COMPLETED')
-    ) {
-      throw new BadRequestException(
-        '답변이나 상담이 완료되기 전에는 삭제할 수 없습니다',
-      );
-    }
-
-    if (userRole !== 'ADMIN' && post.user_id !== userId) {
-      throw new ForbiddenException('이 게시글을 삭제할 권한이 없습니다');
-    }
-
-    // 포인트 반환 로직
-    if (post.post_question || post.post_consultation) {
-      const returnPoints = post.post_question
-        ? post.post_question.points
-        : post.post_consultation.price;
-
-      await this.prisma.users.update({
-        where: { user_id: post.user_id },
-        data: { points: { increment: returnPoints } },
+    return this.prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({
+        where: { post_id: postId },
+        include: {
+          post_question: true,
+          post_consultation: true,
+          comment: true,
+        },
       });
 
-      await this.pointsService.create(post.user_id, {
-        pointsChange: returnPoints,
-        changeReason: post.post_question
-          ? '질문 게시글 삭제로 인한 포인트 반환'
-          : '상담 게시글 삭제로 인한 포인트 반환',
-      });
-    }
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
 
-    return this.prisma.post.update({
-      where: { post_id: postId },
-      data: {
-        status: 'DELETED',
-        deleted_at: new Date(),
-      },
+      // 댓글이 있는 경우에만 답변/완료 체크
+      if (post.comment && post.comment.length > 0) {
+        // 질문이나 상담 게시글의 경우 답변/완료 전에는 삭제 불가
+        if (
+          (post.post_question && !post.post_question.isAnswered) ||
+          (post.post_consultation &&
+            post.post_consultation.status !== 'COMPLETED')
+        ) {
+          throw new BadRequestException(
+            '답변이나 상담 완료되기 전에는 삭제할 수 없습니다',
+          );
+        }
+      }
+
+      if (userRole !== 'ADMIN' && post.user_id !== userId) {
+        throw new ForbiddenException('이 게시글을 삭제할 권한이 없습니다');
+      }
+
+      // 포인트 반환 로직
+      let returnPoints = 0;
+      let changeReason = '';
+
+      if (post.post_question) {
+        returnPoints = post.post_question.points;
+        changeReason = '질문 게시글 삭제로 인한 포인트 반환';
+      } else if (post.post_consultation) {
+        returnPoints = post.post_consultation.price;
+        changeReason = '상담 게시글 삭제로 인한 포인트 반환';
+      }
+
+      if (returnPoints > 0) {
+        // 사용자 포인트 업데이트
+        await tx.users.update({
+          where: { user_id: post.user_id },
+          data: { points: { increment: returnPoints } },
+        });
+
+        // 포인트 반환 이력 추가
+        await tx.point.create({
+          data: {
+            user_id: post.user_id,
+            points_change: returnPoints,
+            change_reason: changeReason,
+            post_id: postId,
+          },
+        });
+      }
+
+      // 게시글 삭제 처리
+      return tx.post.update({
+        where: { post_id: postId },
+        data: {
+          status: 'DELETED',
+          deleted_at: new Date(),
+        },
+      });
     });
   }
 
@@ -1040,7 +1125,7 @@ export class PostsService {
       };
     }
 
-    // 상담 상태로 필터링
+    // 상담 상태로 터링
     if (status) {
       where.post_consultation = {
         ...where.post_consultation,
@@ -1158,7 +1243,7 @@ export class PostsService {
           include: {
             user: {
               include: {
-                country: true, // 댓글 작성자의 국가 정보 추가
+                country: true, // 댓 작성자의 국가 정보 추가
               },
             },
             media: true, // 댓글의 미디어 정보 추가
